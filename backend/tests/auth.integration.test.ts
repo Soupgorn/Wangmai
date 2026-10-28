@@ -28,7 +28,7 @@ test("PostgreSQL migrations and real Better Auth session lifecycle", { timeout: 
       const config = { migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)) };
       await migrate(db, config); await migrate(db, config);
       const tables = await pool.query("select table_name from information_schema.tables where table_schema='public'");
-      assert.deepEqual(tables.rows.map((row) => row.table_name).sort(), ["account", "session", "user", "verification"]);
+      assert.deepEqual(tables.rows.map((row) => row.table_name).sort(), ["account", "schedule_entry", "schedule_exception", "schedule_preference", "session", "user", "verification"]);
     });
     const auth = createAuth(env, db);
     const app = createApp(auth, false);

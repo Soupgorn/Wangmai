@@ -1,15 +1,9 @@
-export type BlockKind = "available" | "busy";
-export type BlockTiming = { type: "weekly"; weekday: number } | { type: "date"; date: string };
+import type { BlockDraft } from "@wangmai/shared";
+export type { BlockDraft } from "@wangmai/shared";
+export type BlockKind = BlockDraft["kind"];
+export type BlockTiming = BlockDraft["timing"];
 
-export type BlockDraft = {
-  title: string;
-  kind: BlockKind;
-  start: string;
-  end: string;
-  timing: BlockTiming;
-};
-
-export type ScheduleBlock = BlockDraft & { id: string; ownerId: string };
+export type ScheduleBlock = BlockDraft & { id: string; ownerId: string; excludedDates?: string[] | undefined; exceptionFor?: { id: string; date: string } | undefined };
 export type Person = {
   id: string;
   displayName: string;
@@ -33,4 +27,6 @@ export interface CoreRepository {
   saveBlock(draft: BlockDraft, id?: string): Promise<CoreSnapshot>;
   deleteBlock(id: string): Promise<CoreSnapshot>;
   updateProfile(patch: Pick<Profile, "displayName" | "timezone" | "shareAvailability">): Promise<CoreSnapshot>;
+  saveOccurrence?(id: string, date: string, replacement: BlockDraft | null): Promise<CoreSnapshot>;
+  restoreOccurrence?(id: string, date: string): Promise<CoreSnapshot>;
 }

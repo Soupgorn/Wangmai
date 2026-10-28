@@ -53,7 +53,7 @@ test("persisted session redirects login, shows real profile, survives reload and
   await context.addCookies([{ name: seeded.cookie.slice(0, separator), value: seeded.cookie.slice(separator + 1), url: env.BETTER_AUTH_URL, httpOnly: true, sameSite: "Lax" }]);
   await page.goto("/login");
   await expect(page).toHaveURL(/\/schedule$/);
-  await expect(page.getByText(/No schedules are saved to your account/)).toBeVisible();
+  await expect(page.getByText(/Your private schedule is saved to your account/)).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByText(seeded.user.email, { exact: true })).toBeVisible();
   await expect(page.getByText("Google profile connected.", { exact: false })).toBeVisible();

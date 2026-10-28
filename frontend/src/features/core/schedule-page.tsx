@@ -26,6 +26,7 @@ export function SchedulePage() {
 }
 
 function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
+  const { mode } = useCore();
   const compact = useSyncExternalStore(subscribe, smallScreen, serverScreen);
   const [selected, setSelected] = useState(snapshot.today);
   const [chosenView, setChosenView] = useState<"week" | "day" | null>(null);
@@ -66,7 +67,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
     setFocused({ day: nextDay, slot: nextSlot });
     scroll.current?.querySelector<HTMLButtonElement>(`[data-day="${nextDay}"][data-slot-index="${nextSlot}"]`)?.focus();
   }
-  function closeEditor(updated = false) { setEditor(null); setNotice(updated ? "Preview updated. Changes reset on refresh." : ""); }
+  function closeEditor(updated = false) { setEditor(null); setNotice(updated ? mode === "persistent" ? "Saved to your account." : "Preview updated. Changes reset on refresh." : ""); }
 
   return <>
     <div className={styles.heading}>
@@ -74,6 +75,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
       <Button ref={addButton} onClick={(event) => open(selected, "09:00", "10:00", event.currentTarget, true)}><Plus aria-hidden="true" />Add time</Button>
     </div>
     <div className={styles.hint}><MousePointer2 aria-hidden="true" /><span>Click a time slot or drag to add a block. Use Add time for a weekly routine. Your titles stay private.</span></div>
+    {mode === "persistent" && dates.some((date) => own.some((block) => matchesDate(block, date) && !matchesDate(block, date, snapshot.profile.timezone))) && <p role="status" className="mb-3 text-xs text-muted-foreground">A recurring time is skipped or repeated by daylight saving in this view. That occurrence is not shown; choose a dated replacement at a valid time.</p>}
     <Card className="min-w-0 overflow-hidden">
       <div className={styles.toolbar}>
         <div><h2>{formatDate(first)}{view === "week" && ` – ${formatDate(last)}`}</h2><p>{dateValue(first).year}{dateValue(first).year !== dateValue(last).year && ` – ${dateValue(last).year}`}</p></div>
@@ -99,14 +101,14 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
                 onPointerUp={(event) => { if (!drag || !event.currentTarget.hasPointerCapture(event.pointerId)) return; const end = pointerSlot(event); event.currentTarget.releasePointerCapture(event.pointerId); skipClick.current = true; open(date, clock(Math.min(drag.first, end) * 30), clock((Math.max(drag.first, end) + 1) * 30), event.currentTarget); setDrag(null); }}
                 onClick={(event) => { if (event.detail !== 0 && skipClick.current) { skipClick.current = false; return; } open(date, clock(slot * 30), clock((slot + 1) * 30), event.currentTarget); }} />)}
               {drag?.day === day && <div className={styles.selection} style={{ top: Math.min(drag.first, drag.last) * 32, height: (Math.abs(drag.last - drag.first) + 1) * 32 }} />}
-              {layoutBlocks(own.filter((block) => matchesDate(block, date))).map(({ block, lane, lanes }) => <button type="button" key={block.id} className={styles.event} data-kind={block.kind} style={{ top: minutes(block.start) / 60 * 64 + 3, height: Math.max(24, (minutes(block.end) - minutes(block.start)) / 60 * 64 - 6), left: `calc(${lane / lanes * 100}% + 4px)`, width: `calc(${100 / lanes}% - 8px)` }} aria-label={`Edit ${block.title}, ${block.kind}, ${block.start} to ${block.end}${block.timing.type === "weekly" ? ", repeats weekly" : ", this date only"}`} onClick={(event) => { setNotice(""); setEditor({ id: block.id, draft: block, date, returnFocus: event.currentTarget }); }}><strong>{block.title}</strong><span>{block.start}–{block.end}</span><span>{block.kind === "available" ? "✓ Available" : "Busy"}{block.timing.type === "weekly" ? " · Weekly" : " · This date"}</span></button>)}
+              {layoutBlocks(own.filter((block) => matchesDate(block, date, mode === "persistent" ? snapshot.profile.timezone : undefined))).map(({ block, lane, lanes }) => <button type="button" key={block.id} className={styles.event} data-kind={block.kind} style={{ top: minutes(block.start) / 60 * 64 + 3, height: Math.max(24, (minutes(block.end) - minutes(block.start)) / 60 * 64 - 6), left: `calc(${lane / lanes * 100}% + 4px)`, width: `calc(${100 / lanes}% - 8px)` }} aria-label={`Edit ${block.title}, ${block.kind}, ${block.start} to ${block.end}${block.timing.type === "weekly" ? ", repeats weekly" : ", this date only"}`} onClick={(event) => { setNotice(""); setEditor({ id: block.id, draft: block, date, returnFocus: event.currentTarget }); }}><strong>{block.title}</strong><span>{block.start}–{block.end}</span><span>{block.kind === "available" ? "✓ Available" : "Busy"}{block.timing.type === "weekly" ? " · Weekly" : " · This date"}</span></button>)}
             </div>)}
           </div>
         </div>
       </div>
       <div className={styles.calendarFooter}><span className={styles.legend}>Available</span><span className={styles.legend} data-kind="busy">Busy</span><span className="ml-auto inline-flex items-center gap-2"><Repeat2 className="size-3.5" aria-hidden="true" />Weekly or date-specific</span></div>
     </Card>
-    <div className={styles.footnote}><span className="inline-flex items-center gap-2"><Globe2 aria-hidden="true" className="size-3.5" />All times in {snapshot.profile.timezone}</span><span>Only your availability is shared.</span></div>
+    <div className={styles.footnote}><span className="inline-flex items-center gap-2"><Globe2 aria-hidden="true" className="size-3.5" />All times in {snapshot.profile.timezone}</span><span>{mode === "persistent" ? "Your saved schedule is private." : "Only your availability is shared."}</span></div>
     <p className="mt-3 text-[11px] text-muted-foreground" role="status">{notice}</p>
     {editor && <BlockEditor editor={editor} fallbackFocus={() => addButton.current} onClose={closeEditor} />}
   </>;

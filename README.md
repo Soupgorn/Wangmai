@@ -1,15 +1,21 @@
 # Wangmai (ว่างมั้ย?)
 
 Wangmai uses Next.js App Router, Hono, PostgreSQL, Drizzle ORM and Better Auth
-with Google OAuth, in npm Workspaces. Phase 3 adds database authentication.
-Schedule and availability features remain fictional, in-memory previews until Phase 4.
+with Google OAuth, in npm Workspaces. Phase 4 adds private database-backed schedules,
+weekly recurrence, dated overrides and a persisted schedule timezone. The public
+preview and availability finder remain fictional demos, separate from saved schedules.
+See [Phase 4 implementation and verification](docs/phase-4.md).
 
-## Repository baseline
+## Repository history
 
 The clean branch `feat/auth-database` initially pointed to Phase 1 commit
 `d72fd7f`. The completed Phase 2 frontend and tests were recovered into the working
 tree from local `feat/core-user-pages` commit `87ae567` before integration.
 No commit, merge, push or deployment was performed.
+
+Phase 4 starts on `feat/schedule-api` from merged main `0274d28` (PR #1), which
+contains the complete Phase 2B and Phase 3 implementation. That baseline was verified
+against remote main before implementation; the earlier account of recovery is historical.
 
 Workspaces are `frontend`, `backend` and `packages/shared`. Keep one root lockfile.
 Use Node.js 24 and npm 11. Versions are pinned: Better Auth 1.7.14,
@@ -33,6 +39,9 @@ npm run dev
 
 Open http://localhost:3000. Hono binds to 127.0.0.1:4000.
 Use localhost consistently for OAuth and cookies.
+Development page visits on 127.0.0.1 redirect to localhost on the same port before
+login. This prevents cookie-bearing OAuth requests from an untrusted numeric origin;
+API routes and production routing are unchanged.
 Google credentials may remain empty during local infrastructure development;
 the login button then displays a configuration error. They are required for real login.
 No fake Google credentials are generated.
@@ -67,7 +76,7 @@ Production requires a public HTTPS auth origin and configured Google credentials
 
 ## Database and migrations
 
-Only Better Auth's core tables exist:
+Authentication uses Better Auth's unchanged core tables:
 
 | Table | Purpose |
 | --- | --- |
@@ -76,7 +85,9 @@ Only Better Auth's core tables exist:
 | session | Persisted expiring, revocable sessions linked to users |
 | verification | OAuth state/verification records |
 
-There is no role column, admin plugin, schedule table or schedule API.
+Phase 4 additionally creates `schedule_entry`, `schedule_exception` and
+`schedule_preference`. They reference the authenticated user and preserve the
+authentication schema. There is no role column or admin plugin.
 Provider/account identities are unique; user deletion cascades to accounts/sessions.
 Drizzle additionally keeps its migration journal in `drizzle.__drizzle_migrations`.
 
@@ -142,14 +153,18 @@ No production environment or deployment was assumed, accessed or started.
   cached navigation. Unauthenticated users redirect to /login.
 - The workspace account and Settings show the actual Google name and email.
   Logout revokes the backend session and returns to Login; failures remain retryable.
-- The schedule, people and editable settings beneath the account remain a clearly
-  labelled fictional preview. They never become user-owned database records.
-  Editing preview name/privacy/timezone does not update the Google profile.
+- Authenticated /schedule uses PostgreSQL for create, read, edit and delete, with
+  recurrence and dated occurrence replacements/cancellations. It never loads fixtures.
+- Authenticated /settings persists only the schedule timezone. Google name/email are
+  read-only; availability sharing is disabled until its own phase.
+- Authenticated /availability remains a labelled fictional finder demo; it does not
+  read the saved calendar or other users' private schedules.
 - /preview/schedule, /preview/availability and /preview/settings preserve the public
   Phase 2 demo, with isolated temporary state and no sign-in requirement.
 
-The asynchronous CoreRepository remains the mock boundary. No schedule persistence,
-availability backend, Admin, Calendar integration, notifications or analytics were added.
+CoreRepository selects an explicit database or in-memory adapter. Public preview
+name/privacy/timezone changes never update Google or persisted account preferences.
+No multi-user availability backend, Admin, Calendar integration, notifications or analytics were added.
 See [Core MVP notes](frontend/docs/core-mvp.md) and
 [design system](frontend/docs/design-system.md) for the approved frontend baseline.
 
@@ -187,8 +202,8 @@ Schema/session choices follow the installed version and
 | npm run lint | Check workspaces, including auth tests |
 | npm run build | Build shared, Next standalone and Hono |
 | npm test | Backend environment tests and existing frontend unit tests |
-| npm run test:integration | Real PostgreSQL migration/auth lifecycle tests in a temporary database |
-| npm run test:e2e --workspace=@wangmai/frontend | Browser auth/profile/logout and all existing preview tests |
+| npm run test:integration | Real PostgreSQL migration/auth/schedule lifecycle tests in temporary databases |
+| npm run test:e2e --workspace=@wangmai/frontend | Browser auth, real schedules, preview isolation and existing preview tests |
 | npm run db:up / npm run db:down | Start/stop only development PostgreSQL |
 | npm run db:generate / npm run db:migrate / npm run db:check | Generate/apply migrations and verify connectivity |
 
@@ -196,16 +211,16 @@ Before tests, configure the local root env, start PostgreSQL and apply migration
 Playwright uses dedicated localhost:3100 and backend:4100 and an isolated Next output
 directory so it does not reuse port 3000. It requires Chromium
 (`npm exec --workspace=@wangmai/frontend -- playwright install chromium`).
-Integration tests create and drop only a random `wangmai_auth_test_*` database;
+Integration tests create and drop only random `wangmai_auth_test_*` / `wangmai_schedule_test_*` databases;
 the local PostgreSQL test role needs CREATEDB. Browser auth fixtures seed uniquely
 named synthetic users in the development database and delete them afterward.
 They use actual Better Auth sessions with signed cookies. The Google button error
 test intercepts the error response; it never claims to authenticate with Google.
 
-See [Phase 3 verification and change inventory](docs/phase-3.md) for observed results
-and remaining configuration. Valid Google credentials were unavailable, so live
-Google consent/code exchange and production Caddy/HTTPS remain unverified.
-Phase 4 business persistence and all deployment work remain outside this change.
+See the historical [Phase 3 verification](docs/phase-3.md) and current
+[Phase 4 verification](docs/phase-4.md). Live Google OAuth was manually confirmed by
+the project owner in Phase 3. Production Caddy/HTTPS and deployment remain unverified.
+Phase 5 multi-user availability and deployment work remain outside this change.
 
 ## Local Phase 3 acceptance update - 2026-10-29
 
@@ -218,4 +233,4 @@ the automated browser tests use database-backed test sessions separately.
 This update supersedes the earlier implementation-time statements that Google
 credentials and live acceptance were pending. Local Phase 3 acceptance is complete.
 Production domain setup, Caddy HTTPS operation and deployment remain unverified.
-No Phase 4 business APIs or persistence have been implemented.
+At that acceptance stage, Phase 4 business APIs and persistence were not yet implemented.

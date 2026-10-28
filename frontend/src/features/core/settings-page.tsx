@@ -21,7 +21,8 @@ export function SettingsPage() {
 
 function SettingsView({ profile }: { profile: Profile }) {
   const account = useAccount();
-  const { updateProfile } = useCore();
+  const { updateProfile, mode } = useCore();
+  const persistent = mode === "persistent";
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [timezone, setTimezone] = useState(profile.timezone);
   const [shareAvailability, setShareAvailability] = useState(profile.shareAvailability);
@@ -42,16 +43,16 @@ function SettingsView({ profile }: { profile: Profile }) {
         <section className={styles.settingsSection} aria-labelledby="profile-heading">
           <h2 id="profile-heading">Your profile</h2>
           <div className={styles.profile}><UserAvatar name={account?.name ?? profile.displayName} decorative className="!size-14 !text-base" /><div><strong>{account?.name ?? profile.displayName}</strong><p>{account ? account.email : "Preview profile. No Google account connected."}</p></div></div>
-          {account && <p className="mb-4 text-xs text-muted-foreground">Google profile connected. The settings below affect the fictional preview only.</p>}
+          {account && <p className="mb-4 text-xs text-muted-foreground">{persistent ? "Google profile connected. Your schedule timezone is saved to your account." : "Google profile connected. The settings below affect the fictional preview only."}</p>}
           <div className={styles.twoColumns}>
-            <Field label="Display name"><input className={styles.input} autoComplete="off" value={displayName} required maxLength={60} onChange={(event) => { setDisplayName(event.target.value); setSaved(false); }} /></Field>
-            <Field label="Example email"><input className={styles.input} type="email" value={profile.email} readOnly aria-describedby="email-note" /></Field>
+            <Field label="Display name"><input className={styles.input} autoComplete="off" value={displayName} readOnly={persistent} required maxLength={60} onChange={(event) => { setDisplayName(event.target.value); setSaved(false); }} /></Field>
+            <Field label={persistent ? "Google email" : "Example email"}><input className={styles.input} type="email" value={profile.email} readOnly aria-describedby="email-note" /></Field>
           </div>
-          <p id="email-note" className="text-[11px] text-muted-foreground">This fictional email is part of the preview, not a signed-in account.</p>
+          <p id="email-note" className="text-[11px] text-muted-foreground">{persistent ? "Name and email come from Google and are not changed by schedule settings." : "This fictional email is part of the preview, not a signed-in account."}</p>
         </section>
         <section className={styles.settingsSection} aria-labelledby="privacy-heading">
           <h2 id="privacy-heading">Availability & privacy</h2>
-          <div className={styles.switchRow}><div><strong id="sharing-label">Share my availability</strong><p id="sharing-description">Let people see when you’re free. Turning this off makes your shared status unknown.</p></div><button type="button" className={styles.switch} role="switch" aria-labelledby="sharing-label" aria-describedby="sharing-description" aria-checked={shareAvailability} onClick={() => { setShareAvailability(!shareAvailability); setSaved(false); }}><span /></button></div>
+          <div className={styles.switchRow}><div><strong id="sharing-label">Share my availability</strong><p id="sharing-description">{persistent ? "Availability sharing remains part of the separate public preview. Your saved schedule is private." : "Let people see when you’re free. Turning this off makes your shared status unknown."}</p></div><button disabled={persistent} type="button" className={styles.switch} role="switch" aria-labelledby="sharing-label" aria-describedby="sharing-description" aria-checked={shareAvailability} onClick={() => { setShareAvailability(!shareAvailability); setSaved(false); }}><span /></button></div>
           <p className="text-xs leading-relaxed text-muted-foreground">Block titles and personal plans are always private.</p>
         </section>
         <section className={styles.settingsSection} aria-labelledby="timezone-heading">
@@ -60,7 +61,7 @@ function SettingsView({ profile }: { profile: Profile }) {
           <p className="text-[11px] leading-relaxed text-muted-foreground">Your calendar and time selections use this timezone. Block times stay at their local wall-clock times when you change it.</p>
         </section>
         {error && <p role="alert" className={`${styles.error} px-6 pt-4`}>{error}</p>}
-        <div className={styles.settingsFooter}><span role="status" className={styles.saved}>{saved && !dirty ? "Updated in this preview only." : dirty ? "Unsaved preview changes" : ""}</span><Button type="submit" disabled={pending || !dirty}>{pending ? "Updating preview…" : "Save changes"}</Button></div>
+        <div className={styles.settingsFooter}><span role="status" className={styles.saved}>{saved && !dirty ? persistent ? "Timezone saved to your account." : "Updated in this preview only." : dirty ? persistent ? "Unsaved timezone change" : "Unsaved preview changes" : ""}</span><Button type="submit" disabled={pending || !dirty}>{pending ? persistent ? "Saving…" : "Updating preview…" : "Save changes"}</Button></div>
       </form></Card>
       <aside>
         <div className={`${styles.privacy} !mt-1`}><ShieldCheck aria-hidden="true" /><strong>Privacy comes first.</strong><p>You choose what to share. We only show when you’re available, never the details of your day.</p></div>
