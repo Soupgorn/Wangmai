@@ -1,0 +1,12 @@
+# Reserved placeholder. Configure real DNS and CloudStack ingress before HTTPS.
+{$WANGMAI_DOMAIN:wangmai.example.com} {
+    @api path /api /api/*
+    handle @api {
+        # handle (not handle_path) preserves /api for Hono and future auth routes.
+        reverse_proxy backend:4000
+    }
+
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

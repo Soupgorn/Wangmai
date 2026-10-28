@@ -1,0 +1,24 @@
+{
+  "name": "wangmai",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "engines": { "node": ">=24 <25", "npm": ">=11 <12" },
+  "workspaces": ["frontend", "backend", "packages/*"],
+  "scripts": {
+    "dev": "npm run build --workspace=@wangmai/shared && concurrently --kill-others --names shared,frontend,backend \"npm run dev --workspace=@wangmai/shared\" \"npm run dev --workspace=@wangmai/frontend\" \"npm run dev --workspace=@wangmai/backend\"",
+    "build": "npm run build --workspace=@wangmai/shared && npm run build --workspace=@wangmai/frontend --workspace=@wangmai/backend",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run build --workspace=@wangmai/shared && npm run typecheck --workspaces",
+    "db:up": "docker compose -f compose.dev.yaml up -d --wait",
+    "db:down": "docker compose -f compose.dev.yaml down"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "24.19.2",
+    "concurrently": "10.0.6",
+    "eslint": "9.39.5",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1"
+  }
+}
