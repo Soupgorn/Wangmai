@@ -2,8 +2,11 @@
 
 A scheduling and availability discovery application: create personal schedules,
 manage availability, and find people who are free during a selected time range.
-**Phase 1 establishes the foundation only.** The placeholder page and API health
-check work; authentication, database access, and scheduling features are not implemented.
+**Phase 2B is a Core MVP frontend preview.** Landing, Login, My Schedule, Who’s Free?
+and Settings follow the approved Wangmai design. Calendar editing and availability
+filtering work with fictional, in-memory data. Refreshing resets all changes.
+Google OAuth remains planned: the disabled Google button does not sign anyone in.
+Use **Explore the interactive preview** on Login to open My Schedule.
 
 ## Stack
 
@@ -26,9 +29,9 @@ Next.js React, accessibility, and import plugins do not declare ESLint 10 suppor
 .
 ├── frontend/
 │   ├── src/
-│   │   ├── app/                # Layout, placeholder page, global styles
+│   │   ├── app/                # Public pages and (core) workspace routes
 │   │   ├── components/ui/      # shadcn/ui components
-│   │   ├── features/           # Future feature ownership
+│   │   ├── features/core/      # Calendar, finder, settings, mock repository, unit tests
 │   │   ├── hooks/              # Future reusable hooks
 │   │   └── lib/                # Same-origin API client and UI utilities
 │   ├── components.json
@@ -41,7 +44,7 @@ Next.js React, accessibility, and import plugins do not declare ESLint 10 suppor
 │   │   ├── auth/               # Future backend-only auth boundary
 │   │   ├── db/                 # Future Drizzle integration
 │   │   ├── middleware/         # Future cross-cutting middleware
-│   │   └── modules/            # Future users/schedules/availability/admin
+│   │   └── modules/            # Future business modules; no business APIs yet
 │   └── Dockerfile
 ├── packages/shared/src/        # Shared API schemas and types
 ├── infra/caddy/Caddyfile
@@ -87,10 +90,10 @@ npm run db:up
 npm run dev
 ```
 
-`db:up` is optional in Phase 1: no application code opens a database connection.
+`db:up` is optional for this frontend preview: no application code opens a database connection.
 Open [http://localhost:3000](http://localhost:3000). The Hono API listens at
 [http://localhost:4000](http://localhost:4000). Both native servers bind to loopback.
-The page checks the API through the frontend and displays its actual connection state.
+The development footer checks the API through the frontend and displays its actual connection state.
 `Ctrl+C` stops the workspace development processes. Backend and shared code restart
 or recompile on changes; Next.js provides frontend hot reload.
 
@@ -148,6 +151,8 @@ does not update an existing database volume; manage existing roles explicitly.
 | `npm run dev --workspace=@wangmai/frontend` | Run frontend only after shared has been built |
 | `npm run dev --workspace=@wangmai/backend` | Run backend only after shared has been built |
 | `npm run start --workspace=@wangmai/backend` | Run the compiled backend after `npm run build` |
+| `npm run test:unit --workspace=@wangmai/frontend` | Test availability rules, timezone handling and the mock repository |
+| `npm run test:e2e --workspace=@wangmai/frontend` | Browser checks for core interactions, responsive layouts and the health proxy |
 
 The shared package exports compiled ESM and declarations from `dist/`. Import it with
 `import { healthResponseSchema, type HealthResponse } from "@wangmai/shared"`.
@@ -162,6 +167,35 @@ the development processes and stops the others when one exits.
 
 shadcn/ui uses `frontend/components.json`, CSS variables, and the `@/*` source alias.
 Add components only when needed with `npm exec --workspace=@wangmai/frontend -- shadcn add <component>`.
+
+For browser checks, install Chromium once with
+`npm exec --workspace=@wangmai/frontend -- playwright install --only-shell chromium`.
+The test runner starts the root development servers, or reuses servers already running
+on the default ports. Browser output is ignored under `frontend/.next/phase-2b-results/`.
+
+## Core MVP preview
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Approved Landing page |
+| `/login` | Planned Google login and explicit preview entry |
+| `/schedule` | Weekly/day calendar; add, edit and delete available or busy blocks |
+| `/availability` | Date/time selection with instant counts and available/busy/unknown states |
+| `/settings` | Preview name, timezone, availability sharing and leaving the preview |
+
+Click a calendar slot, drag across half-hour slots, or use Add time. Blocks may repeat
+weekly or apply to one date. Busy blocks override availability; unknown means no
+shared coverage for the entire query, or sharing is disabled. Settings use the selected
+timezone; other people’s local times are converted before matching. Overnight periods
+must be split into separate dates. No Search button, authentication session, browser
+storage or server persistence is involved.
+
+The asynchronous `CoreRepository` boundary isolates fictional fixtures from components.
+A future Hono adapter can replace it without changing the screens. See
+[Core MVP implementation notes](frontend/docs/core-mvp.md) and
+[design system](frontend/docs/design-system.md). Real authentication, database queries,
+and business APIs remain outside Phase 2B. Google Calendar integration, Admin pages,
+feature flags, reports, analytics, notifications and group planning are excluded.
 
 ## Health checks and API routing
 
@@ -225,12 +259,12 @@ or prove operational readiness. Plan backups and restore checks before storing u
 data. Pin deployment image digests during release preparation. CI runs install, lint,
 typecheck, build, and Compose validation; it performs no automatic deployment.
 
-## Next phases
+## Planned next work
 
 1. Design the scheduling data model, time-zone rules, and API contracts; then add
    Drizzle schema, migrations, and database connection management.
 2. Integrate Better Auth and Google OAuth in Hono; verify cookies through both proxies.
-3. Implement schedules and availability discovery, using the separate visual references.
-4. Add authorization and administration, followed by separately scoped integrations.
+3. Replace the mock repository with authorized Hono schedule and availability APIs;
+   verify persistence, timezone rules and privacy against PostgreSQL.
 
-Google Calendar, notifications, analytics, and complete UI design are deferred.
+Backend work requires a separate phase request. Phase 2B does not begin it automatically.
