@@ -1,236 +1,221 @@
 # Wangmai (ว่างมั้ย?)
 
-A scheduling and availability discovery application: create personal schedules,
-manage availability, and find people who are free during a selected time range.
-**Phase 1 establishes the foundation only.** The placeholder page and API health
-check work; authentication, database access, and scheduling features are not implemented.
+Wangmai uses Next.js App Router, Hono, PostgreSQL, Drizzle ORM and Better Auth
+with Google OAuth, in npm Workspaces. Phase 3 adds database authentication.
+Schedule and availability features remain fictional, in-memory previews until Phase 4.
 
-## Stack
+## Repository baseline
 
-| Area | Foundation |
-| --- | --- |
-| Frontend | Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, shadcn/ui, Lucide React |
-| Backend | Hono on Node.js 24, TypeScript, Zod |
-| Shared | `@wangmai/shared` workspace package with one health response schema and inferred type |
-| Infrastructure | PostgreSQL 18, Docker Compose, Caddy 2, Ubuntu on an Apache CloudStack VM |
-| Planned | Drizzle ORM, Better Auth, Google OAuth; not installed or configured yet |
+The clean branch `feat/auth-database` initially pointed to Phase 1 commit
+`d72fd7f`. The completed Phase 2 frontend and tests were recovered into the working
+tree from local `feat/core-user-pages` commit `87ae567` before integration.
+No commit, merge, push or deployment was performed.
 
-Exact JavaScript dependency versions and the package manager are pinned in the
-manifests and the single root `package-lock.json`. TypeScript 6 is used to stay within the supported
-range of the TypeScript ESLint tooling. ESLint 9 is retained because the current
-Next.js React, accessibility, and import plugins do not declare ESLint 10 support.
-
-## Repository
-
-```text
-.
-├── frontend/
-│   ├── src/
-│   │   ├── app/                # Layout, placeholder page, global styles
-│   │   ├── components/ui/      # shadcn/ui components
-│   │   ├── features/           # Future feature ownership
-│   │   ├── hooks/              # Future reusable hooks
-│   │   └── lib/                # Same-origin API client and UI utilities
-│   ├── components.json
-│   └── Dockerfile
-├── backend/
-│   ├── src/
-│   │   ├── index.ts            # Node server and graceful shutdown
-│   │   ├── app.ts              # Hono application and health route
-│   │   ├── config/             # Validated runtime environment
-│   │   ├── auth/               # Future backend-only auth boundary
-│   │   ├── db/                 # Future Drizzle integration
-│   │   ├── middleware/         # Future cross-cutting middleware
-│   │   └── modules/            # Future users/schedules/availability/admin
-│   └── Dockerfile
-├── packages/shared/src/        # Shared API schemas and types
-├── infra/caddy/Caddyfile
-├── .github/workflows/ci.yaml   # Checks only; no deployment
-├── compose.yaml               # Production topology
-├── compose.dev.yaml           # Standalone local PostgreSQL
-├── package-lock.json
-├── package.json
-├── .env.example
-└── README.md
-```
-
-Future module folders are created with their first implementation. Directory
-README files explain ownership without introducing empty route/service files.
-
-## Prerequisites
-
-- Node.js **24 LTS** (see `.node-version`).
-- npm **11.x**, included with Node.js 24. This migration was verified with npm 11.6.2.
-- Docker Engine with Docker Compose v2+ (Docker Desktop on Windows) for PostgreSQL
-  or container verification. The frontend and health API run without Docker.
-- Git. No remote or deployment is created by this foundation.
+Workspaces are `frontend`, `backend` and `packages/shared`. Keep one root lockfile.
+Use Node.js 24 and npm 11. Versions are pinned: Better Auth 1.7.14,
+Drizzle ORM 0.45.4, Drizzle Kit 0.31.11 and node-postgres 8.23.1.
+The existing palette, typography, layout and core preview interactions are preserved.
 
 ## Local setup
 
-From the repository root, copy the environment example:
+Copy `.env.example` to `.env` only for a new checkout; preserve existing credentials.
+Choose a PostgreSQL password and update DATABASE_URL with the URL-encoded password.
+Generate a signing secret and put the output in BETTER_AUTH_SECRET:
 
-```powershell
-# PowerShell
-Copy-Item .env.example .env
-```
-
-```sh
-# macOS / Linux
-cp .env.example .env
-```
-
-Replace the example PostgreSQL password, then install and start:
-
-```sh
+~~~sh
+node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
 npm install
 npm run db:up
+npm run db:migrate
+npm run db:check
 npm run dev
-```
+~~~
 
-`db:up` is optional in Phase 1: no application code opens a database connection.
-Open [http://localhost:3000](http://localhost:3000). The Hono API listens at
-[http://localhost:4000](http://localhost:4000). Both native servers bind to loopback.
-The page checks the API through the frontend and displays its actual connection state.
-`Ctrl+C` stops the workspace development processes. Backend and shared code restart
-or recompile on changes; Next.js provides frontend hot reload.
+Open http://localhost:3000. Hono binds to 127.0.0.1:4000.
+Use localhost consistently for OAuth and cookies.
+Google credentials may remain empty during local infrastructure development;
+the login button then displays a configuration error. They are required for real login.
+No fake Google credentials are generated.
 
-## Environment configuration
+The backend loads the repository-root `.env`. Next.js uses `frontend/.env.local`
+only for optional proxy overrides. Secrets never need frontend configuration.
+Existing environment variables take precedence over env-file values.
 
-The backend loads the repository-root `.env` through Node's `--env-file-if-exists`.
-Compose reads that file for interpolation. Existing process environment values take
-precedence. Next.js reads `frontend/.env.local`, **not** the repository-root `.env`;
-no frontend environment file is required with the default local ports.
+## Environment variables
 
 | Variable | Purpose |
 | --- | --- |
-| `NODE_ENV`, `HOST`, `PORT` | Backend runtime; defaults to development, `127.0.0.1`, `4000` |
-| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | PostgreSQL initialization; choose real credentials before deployment |
-| `POSTGRES_PORT` | Local PostgreSQL port; defaults to `5432`, published only on `127.0.0.1` |
-| `DATABASE_URL` | Reserved for Drizzle; use `localhost` locally and `postgres` inside Compose |
-| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Future auth only; URL is the public frontend origin |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Future Google OAuth only |
-| `WANGMAI_DOMAIN` | Caddy hostname; `wangmai.example.com` is a reserved placeholder |
-| `API_PROXY_ORIGIN` | Optional in `frontend/.env.local`; local rewrite target defaults to `http://127.0.0.1:4000` |
+| NODE_ENV | development, test or production; defaults to development |
+| HOST / PORT | Backend bind address and port; defaults 127.0.0.1 / 4000 |
+| POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB | Development PostgreSQL initialization; use a strong password |
+| POSTGRES_PORT | Loopback development container port; defaults to 5432 |
+| DATABASE_URL | PostgreSQL connection URL; localhost locally, postgres in production Compose |
+| BETTER_AUTH_SECRET | Required random signing/encryption secret, at least 32 characters; placeholders rejected |
+| BETTER_AUTH_URL | Required public origin, locally http://localhost:3000; no path or trailing slash |
+| GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET | Both empty locally or both valid Google Web application credentials; required in production |
+| API_PROXY_ORIGIN | Optional Next development rewrite target; defaults to http://127.0.0.1:4000 |
+| API_INTERNAL_ORIGIN | Optional Next server-rendering Hono origin; defaults to http://127.0.0.1:4000; production Compose supplies http://backend:4000 |
+| WANGMAI_DOMAIN | Production Caddy DNS hostname; placeholder is not a deployment |
+| NEXT_DIST_DIR | Optional isolated Next build directory used by browser tests |
 
-If you change the backend port, update `API_PROXY_ORIGIN` accordingly and restart
-Next.js. Use a URL-encoded password in `DATABASE_URL` if it contains reserved characters.
-Keep `.env`, `.env.local`, `.env.production`, private keys, and `secrets/` out of Git.
-Never prefix server-side credentials with `NEXT_PUBLIC_`. Environment files are also
-excluded from Docker build contexts. Future auth variables are documented but not
-passed into containers or consumed until the authentication phase.
+Do not prefix secrets with NEXT_PUBLIC_. Env files are excluded from Git and Docker
+contexts. Development/test database connections reject non-loopback hosts, different
+database names/ports and query options that could override the target. POSTGRES_DB
+and POSTGRES_PORT must match the local Compose database. Never point local development
+at production or use an SSH tunnel to a production database.
+Production requires a public HTTPS auth origin and configured Google credentials.
 
-## PostgreSQL locally
+## Database and migrations
 
-```sh
-npm run db:up
-docker compose -f compose.dev.yaml ps
-docker compose -f compose.dev.yaml logs postgres
-npm run db:down
-```
+Only Better Auth's core tables exist:
 
-`compose.dev.yaml` is a **standalone** file, not an override; do not combine it with
-`compose.yaml`. Local and production stacks have separate project names and persistent
-volumes. PostgreSQL 18 stores data under the mounted `/var/lib/postgresql` directory.
-Stopping the stack preserves data. Changing initialization credentials in `.env`
-does not update an existing database volume; manage existing roles explicitly.
-
-## Commands
-
-| Command | Result |
+| Table | Purpose |
 | --- | --- |
-| `npm install` | Install dependencies and link the local workspace packages |
-| `npm ci` | Clean, reproducible install from the root lockfile; used by CI and Docker |
-| `npm run dev` | Build shared contracts once, then run shared watch, Next.js, and Hono concurrently |
-| `npm run build` | Build shared contracts first, then both applications |
-| `npm run lint` | ESLint across all workspace packages |
-| `npm run typecheck` | Build shared declarations, generate Next route types, and check all packages |
-| `npm run db:up` / `npm run db:down` | Start PostgreSQL and wait for health / stop it while keeping data |
-| `npm run dev --workspace=@wangmai/frontend` | Run frontend only after shared has been built |
-| `npm run dev --workspace=@wangmai/backend` | Run backend only after shared has been built |
-| `npm run start --workspace=@wangmai/backend` | Run the compiled backend after `npm run build` |
+| user | Google-derived name, email, verification and optional image |
+| account | Unique provider/account identity and encrypted OAuth tokens |
+| session | Persisted expiring, revocable sessions linked to users |
+| verification | OAuth state/verification records |
 
-The shared package exports compiled ESM and declarations from `dist/`. Import it with
-`import { healthResponseSchema, type HealthResponse } from "@wangmai/shared"`.
-Root commands take care of build ordering; after cloning, run root commands before
-starting an individual application. Native npm Workspaces are declared in the root
-`package.json` as `frontend`, `backend`, and `packages/*`. Both applications depend
-on shared version `0.1.0`, which npm links to the matching local workspace.
-Keep one root lockfile and install from the repository root. npm runs workspace
-scripts in the specified order rather than sorting dependencies, so root build and
-typecheck scripts explicitly build shared first. `concurrently` only coordinates
-the development processes and stops the others when one exits.
+There is no role column, admin plugin, schedule table or schedule API.
+Provider/account identities are unique; user deletion cascades to accounts/sessions.
+Drizzle additionally keeps its migration journal in `drizzle.__drizzle_migrations`.
 
-shadcn/ui uses `frontend/components.json`, CSS variables, and the `@/*` source alias.
-Add components only when needed with `npm exec --workspace=@wangmai/frontend -- shadcn add <component>`.
+The typed schema lives in `backend/src/db/schema.ts`; generated SQL, journal and
+snapshot metadata live in `backend/drizzle/` and must be version controlled.
 
-## Health checks and API routing
+~~~sh
+npm run db:generate
+npm run db:migrate
+npm run db:check
+~~~
 
-With `npm run dev` running:
+Generation is offline. Migration and connectivity commands use the guarded pool
+and sanitized errors. Migrations are explicit and repeatable; startup never silently
+changes the schema. Backend startup checks connectivity and shutdown closes the pool.
+The health route remains a process check rather than database readiness.
+The existing standalone `compose.dev.yaml` and development volume are unchanged.
+`npm run db:down` stops the container without deleting data.
+Changing initialization credentials does not change an existing PostgreSQL volume.
 
-```sh
-curl http://localhost:4000/api/health
-curl http://localhost:3000/api/health
-```
+## Authentication and routing
 
-On PowerShell, use `curl.exe` or `Invoke-RestMethod`. Both responses must be:
+Hono owns all authentication under `/api/auth/*`. Next.js has no auth handler,
+database adapter, Google secret or separate authentication implementation.
 
-```json
-{"status":"ok","service":"wangmai-api"}
-```
+| Endpoint | Behavior |
+| --- | --- |
+| POST /api/auth/sign-in/social | Basic Google redirect sign-in only |
+| GET /api/auth/callback/google | Google code/state callback, automatic account creation or recognition |
+| GET /api/auth/get-session | Better Auth session lookup/refresh |
+| POST /api/auth/sign-out | Revoke session and expire cookies |
+| GET /api/v1/me | Session-validated basic profile; 401 when unauthenticated |
+| GET /api/health | Existing public health response |
 
-The health route is a process check, not a database readiness check. The browser API
-client calls the relative `/api/health` URL with same-origin credentials. In development,
-Next.js rewrites `/api/:path*` to Hono **with `/api` preserved**. In production, Caddy
-owns this routing; a standalone frontend started without Caddy will not proxy API requests.
+Better Auth handles additional core session endpoints, such as listing and revoking
+a user's sessions. Account linking/unlinking and provider-token retrieval/refresh
+endpoints are disabled. Email/password sign-in is not enabled.
+Client-added social scopes, alternate providers and direct ID-token login are rejected.
+Google permissions are only openid, email and profile. No Calendar permissions or API.
 
-Hono will remain the only authentication backend. Future Better Auth routes and Google
-OAuth callbacks should live under `/api/auth/*` on the same public origin. During the
-auth phase, configure trusted origins, forwarded-header handling, secure production
-cookies, and Google callback URLs against that public origin. Phase 1 does not claim
-to verify session or OAuth behavior.
+The fixed BETTER_AUTH_URL and exact trusted origin govern redirects and CSRF checks.
+Arbitrary forwarded host headers cannot choose the callback origin. Cookies are
+HttpOnly, host scoped and SameSite=Lax; production cookies use Secure.
+Sessions last seven days and refresh after one day. Cookie caching is disabled so
+protected backend requests validate against the database. OAuth state is database
+backed and stored provider tokens are encrypted. Logs never include driver errors,
+credentials or tokens. `/api/v1/me` ignores client-supplied IDs and returns no session
+token or provider token.
 
-## Production and CloudStack architecture
+Browser requests use the same public origin. Development Next rewrites preserve
+`/api`; production Caddy sends `/api/*` directly to Hono. Caddy routing is unchanged.
+Production Compose now passes auth variables to Hono and the internal backend
+origin to Next. The backend Dockerfile includes migration artifacts, allowing a
+manually authorized operator to run `node backend/dist/db/migrate.js` inside the image.
+No production environment or deployment was assumed, accessed or started.
 
-```text
-Internet -> CloudStack public IP / firewall -> Ubuntu VM :80/:443 -> Caddy
-                                                               ├── /api/* -> Hono :4000
-                                                               └── /*     -> Next.js :3000
-                                                                            Hono -> PostgreSQL :5432
-```
+## Frontend behavior and preview boundary
 
-Only Caddy publishes application ingress ports. Frontend and backend use Docker DNS;
-PostgreSQL is on an internal database network shared only with the backend. Application
-containers run as a non-root user. Dockerfiles use separate build/runtime stages, a
-root lockfile via `npm ci`, and Next.js standalone output. PostgreSQL, frontend, and backend have
-health checks; PostgreSQL data and Caddy certificates/config have persistent volumes.
+- Login keeps the approved design and enables Continue with Google, loading,
+  callback-error and retry states. Authenticated visitors redirect to /schedule.
+- /schedule, /availability and /settings validate the session through Hono during
+  server rendering. A client session boundary handles expiration, focus/refetch and
+  cached navigation. Unauthenticated users redirect to /login.
+- The workspace account and Settings show the actual Google name and email.
+  Logout revokes the backend session and returns to Login; failures remain retryable.
+- The schedule, people and editable settings beneath the account remain a clearly
+  labelled fictional preview. They never become user-owned database records.
+  Editing preview name/privacy/timezone does not update the Google profile.
+- /preview/schedule, /preview/availability and /preview/settings preserve the public
+  Phase 2 demo, with isolated temporary state and no sign-in requirement.
 
-Before a real deployment, provision the Ubuntu VM and Docker, configure CloudStack
-networking/firewall and DNS, replace credentials, set `DATABASE_URL` to use host
-`postgres`, and set `WANGMAI_DOMAIN` to the real hostname. Allow TCP 80/443 (UDP 443
-is optional HTTP/3); restrict SSH to administrators. Set future `BETTER_AUTH_URL` to
-the public HTTPS origin when auth is implemented. Caddy obtains certificates only once
-valid DNS and public ingress are available; the placeholder domain cannot do this.
+The asynchronous CoreRepository remains the mock boundary. No schedule persistence,
+availability backend, Admin, Calendar integration, notifications or analytics were added.
+See [Core MVP notes](frontend/docs/core-mvp.md) and
+[design system](frontend/docs/design-system.md) for the approved frontend baseline.
 
-Validate and build manually from the root:
+## Google Cloud Console setup
 
-```sh
-docker compose --env-file .env -f compose.yaml config --quiet
-docker compose --env-file .env -f compose.yaml build
-# On the prepared server, with real deployment configuration:
-docker compose --env-file .env -f compose.yaml up -d --wait
-```
+1. Create or select a project in Google Cloud Console.
+2. Configure Google Auth Platform branding, support email and audience. If the
+   external app is in Testing, add the Google accounts that will test login.
+3. Request only the basic openid, email and profile permissions. Do not enable or
+   request Google Calendar access.
+4. Create an OAuth client ID of type **Web application**.
+5. Add the local authorized JavaScript origin: `http://localhost:3000`.
+6. Add the exact local authorized redirect URI:
+   `http://localhost:3000/api/auth/callback/google`.
+7. Put the actual client ID and client secret in the backend root `.env`.
+   Keep BETTER_AUTH_URL=http://localhost:3000 and restart Hono.
+8. For a separately prepared production environment, configure the actual HTTPS
+   origin and exact redirect URI `https://YOUR_DOMAIN/api/auth/callback/google`.
+   Set BETTER_AUTH_URL and WANGMAI_DOMAIN to that real domain. No domain is assumed.
+9. Manually verify first sign-in, repeat sign-in reusing the same account, reload/
+   restart persistence, denied consent, logout and subsequent protected-route denial.
 
-Syntax-only validation can use `--env-file .env.example`. This does not deploy anything
-or prove operational readiness. Plan backups and restore checks before storing user
-data. Pin deployment image digests during release preparation. CI runs install, lint,
-typecheck, build, and Compose validation; it performs no automatic deployment.
+Use the standard redirect flow; Google One Tap and Calendar integration are excluded.
+See [Better Auth Google setup](https://better-auth.com/docs/authentication/google)
+and [Google OpenID Connect setup](https://developers.google.com/identity/openid-connect/openid-connect).
+Schema/session choices follow the installed version and
+[Better Auth's Drizzle adapter](https://better-auth.com/docs/adapters/drizzle).
 
-## Next phases
+## Commands and verification
 
-1. Design the scheduling data model, time-zone rules, and API contracts; then add
-   Drizzle schema, migrations, and database connection management.
-2. Integrate Better Auth and Google OAuth in Hono; verify cookies through both proxies.
-3. Implement schedules and availability discovery, using the separate visual references.
-4. Add authorization and administration, followed by separately scoped integrations.
+| Command | Purpose |
+| --- | --- |
+| npm run dev | Build shared once, then run shared watch, Next and Hono |
+| npm run typecheck | Generate Next types and check frontend, backend, backend tests and shared |
+| npm run lint | Check workspaces, including auth tests |
+| npm run build | Build shared, Next standalone and Hono |
+| npm test | Backend environment tests and existing frontend unit tests |
+| npm run test:integration | Real PostgreSQL migration/auth lifecycle tests in a temporary database |
+| npm run test:e2e --workspace=@wangmai/frontend | Browser auth/profile/logout and all existing preview tests |
+| npm run db:up / npm run db:down | Start/stop only development PostgreSQL |
+| npm run db:generate / npm run db:migrate / npm run db:check | Generate/apply migrations and verify connectivity |
 
-Google Calendar, notifications, analytics, and complete UI design are deferred.
+Before tests, configure the local root env, start PostgreSQL and apply migrations.
+Playwright uses dedicated localhost:3100 and backend:4100 and an isolated Next output
+directory so it does not reuse port 3000. It requires Chromium
+(`npm exec --workspace=@wangmai/frontend -- playwright install chromium`).
+Integration tests create and drop only a random `wangmai_auth_test_*` database;
+the local PostgreSQL test role needs CREATEDB. Browser auth fixtures seed uniquely
+named synthetic users in the development database and delete them afterward.
+They use actual Better Auth sessions with signed cookies. The Google button error
+test intercepts the error response; it never claims to authenticate with Google.
+
+See [Phase 3 verification and change inventory](docs/phase-3.md) for observed results
+and remaining configuration. Valid Google credentials were unavailable, so live
+Google consent/code exchange and production Caddy/HTTPS remain unverified.
+Phase 4 business persistence and all deployment work remain outside this change.
+
+## Local Phase 3 acceptance update - 2026-10-29
+
+The project owner has manually confirmed successful live Google login, redirect to
+My Schedule, real Google profile display, session persistence after refresh,
+authenticated profile API access, logout, protected-route enforcement, and repeat
+login without duplicate users. These are owner-confirmed live acceptance results;
+the automated browser tests use database-backed test sessions separately.
+
+This update supersedes the earlier implementation-time statements that Google
+credentials and live acceptance were pending. Local Phase 3 acceptance is complete.
+Production domain setup, Caddy HTTPS operation and deployment remain unverified.
+No Phase 4 business APIs or persistence have been implemented.

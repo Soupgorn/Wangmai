@@ -1,2 +1,5 @@
-Future Better Auth integration belongs here and will be mounted by Hono under `/api/auth/*`.
-Keep Google OAuth credentials and session handling in the backend. No auth implementation exists in Phase 1.
+Better Auth 1.7.14 lives exclusively in Hono under `/api/auth/*`.
+`auth.ts` configures the PostgreSQL Drizzle adapter, Google basic login,
+database-backed sessions, trusted public origin and secure production cookies.
+Google credentials and the signing secret are backend-only.
+See the root README for Google Cloud Console setup and verification limits.

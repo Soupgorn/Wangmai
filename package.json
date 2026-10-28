@@ -3,15 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "npm@11.6.2",
-  "engines": { "node": ">=24 <25", "npm": ">=11 <12" },
-  "workspaces": ["frontend", "backend", "packages/*"],
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
+  "workspaces": [
+    "frontend",
+    "backend",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm run build --workspace=@wangmai/shared && concurrently --kill-others --names shared,frontend,backend \"npm run dev --workspace=@wangmai/shared\" \"npm run dev --workspace=@wangmai/frontend\" \"npm run dev --workspace=@wangmai/backend\"",
     "build": "npm run build --workspace=@wangmai/shared && npm run build --workspace=@wangmai/frontend --workspace=@wangmai/backend",
     "lint": "npm run lint --workspaces",
     "typecheck": "npm run build --workspace=@wangmai/shared && npm run typecheck --workspaces",
     "db:up": "docker compose -f compose.dev.yaml up -d --wait",
-    "db:down": "docker compose -f compose.dev.yaml down"
+    "db:down": "docker compose -f compose.dev.yaml down",
+    "db:generate": "npm run db:generate --workspace=@wangmai/backend",
+    "db:migrate": "npm run db:migrate --workspace=@wangmai/backend",
+    "db:check": "npm run db:check --workspace=@wangmai/backend",
+    "test": "npm run test --workspace=@wangmai/backend && npm run test:unit --workspace=@wangmai/frontend",
+    "test:integration": "npm run test:integration --workspace=@wangmai/backend"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

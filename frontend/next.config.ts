@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 const workspaceRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
   turbopack: { root: workspaceRoot },
