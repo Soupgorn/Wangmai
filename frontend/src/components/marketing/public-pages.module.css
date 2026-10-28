@@ -1,0 +1,137 @@
+.landing { min-height: 100svh; }
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 45px; padding: 65px 0 55px; }
+.heroTitle { margin: 0 0 21px; font-size: var(--type-display); line-height: 1.12; font-weight: 600; letter-spacing: -3px; }
+.heroTitle span { display: block; }
+.heroDescription { max-width: 330px; font-size: var(--type-body); line-height: 1.85; color: var(--muted-foreground); }
+.heroActions { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-top: 27px; }
+.heroActions small { font-size: var(--type-caption); color: var(--muted-foreground); }
+.heroPreview { position: relative; min-width: 0; margin: 0; border-radius: var(--radius-preview); background: var(--preview-backdrop); padding: 27px 24px 22px; }
+.heroPreview::before { content: ""; position: absolute; right: 12px; top: -18px; width: 35px; height: 35px; border-radius: 12px 12px 12px 2px; background: var(--primary); transform: rotate(12deg); }
+.previewCard { position: relative; overflow: hidden; background: var(--preview-surface); box-shadow: var(--shadow-soft); }
+.previewHeader { padding: 20px; border-bottom: 1px solid var(--border); }
+.previewHeader h2 { font-size: 19px; line-height: 1.5; letter-spacing: -0.6px; font-weight: 650; }
+.previewHeader > p { margin-top: 3px; font-size: var(--type-small); line-height: 1.6; color: var(--muted-foreground); }
+.previewDate { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted-foreground); font-size: var(--type-small); line-height: 1.5; }
+.previewDate svg { width: 17px; height: 17px; stroke-width: 1.6; flex-shrink: 0; }
+.previewHeader .previewDate { margin-top: 19px; }
+.previewTime { margin-top: 6px; font-size: 26px; line-height: 1.3; font-weight: 550; letter-spacing: -1px; white-space: nowrap; }
+.previewTimezone { display: flex; align-items: center; gap: 4px; margin-top: 11px; color: var(--muted-foreground); font-size: 10px; }
+.previewTimezone svg { height: 12px; width: 12px; stroke-width: 1.6; }
+.previewResults { padding: 20px; }
+.previewResultHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.previewResultHeading h3 { font-size: var(--type-small); font-weight: 650; }
+.previewResultHeading > span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--availability-background); font-size: 11px; color: var(--foreground); }
+.previewPeople { margin: 0; padding: 0; list-style: none; display: grid; gap: 17px; }
+.previewPeople li { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.personName { font-size: 12px; font-weight: 650; }
+.personStatus { margin-top: 2px; font-size: 10px; color: var(--muted-foreground); }
+.availableMark { margin-left: auto; display: grid; place-items: center; width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; background: var(--secondary); }
+.availableMark svg { height: 10px; width: 10px; stroke-width: 2; }
+.previewCaption { margin-top: 15px; text-align: center; color: var(--muted-foreground); font-size: 10px; line-height: 1.6; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 38px; padding: 34px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.feature > svg { display: block; width: 20px; height: 20px; stroke-width: 1.6; margin-bottom: 13px; color: var(--primary); }
+.feature p { max-width: 230px; }
+
+.login { min-height: max(760px, 100svh); display: grid; grid-template-columns: 1fr 1fr; background: var(--card); }
+.loginIntro { min-width: 0; display: flex; flex-direction: column; padding: 36px 40px; border-right: 1px solid var(--border); background: var(--auth-panel); }
+.loginStory { width: 100%; max-width: 344px; align-self: center; margin: auto 0; padding: 54px 0; }
+.loginStory h2 { font-size: var(--type-auth-display); font-weight: 550; line-height: 1.15; letter-spacing: -1.65px; }
+.loginStory > p { max-width: 300px; margin-top: 16px; font-size: 12px; line-height: 1.8; color: var(--muted-foreground); }
+.introCaption { font-size: 10px; line-height: 1.5; color: var(--muted-foreground); }
+.compactFigure { margin: 32px 0 0; }
+.compactPreview { overflow: hidden; background: var(--preview-surface); box-shadow: var(--shadow-subtle); }
+.compactContent { padding: 19px 20px 17px; }
+.compactContent .previewDate svg { height: 15px; width: 15px; }
+.compactTime { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 20px; }
+.compactTime strong { font-size: 27px; line-height: 1.5; font-weight: 550; letter-spacing: -1px; white-space: nowrap; }
+.compactTime > span { white-space: nowrap; color: var(--muted-foreground); font-size: 10px; }
+.compactMatch { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.avatarStack { display: flex; align-items: center; padding-left: 0; }
+.avatarStack > span { margin-left: -7px; border: 2px solid var(--preview-surface); }
+.avatarStack > span:first-child { margin-left: 0; }
+.compactMatch > span { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 550; }
+.compactMatch svg { height: 13px; width: 13px; stroke-width: 1.6; }
+.compactPlan { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding: 12px 20px; background: var(--preview-backdrop); font-size: 11px; }
+.compactPlan svg { height: 14px; width: 14px; stroke-width: 1.6; }
+.loginContent { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+.loginForm { width: 100%; max-width: 305px; text-align: left; }
+.loginIcon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 24px; border-radius: 12px; background: var(--secondary); }
+.loginIcon svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.loginForm h1 { font-size: var(--type-page); font-weight: 600; line-height: 1.22; letter-spacing: -1px; }
+.loginDescription { margin-top: 12px; margin-bottom: 30px; font-size: 12px; line-height: 1.8; color: var(--muted-foreground); }
+.googleButton { width: 100%; min-height: 44px; gap: 11px; font-size: 12px; }
+.googleMark { font-family: Arial, sans-serif; font-size: 17px; font-weight: 700; line-height: 1; }
+.comingSoon { margin-top: 10px; font-size: 11px; line-height: 1.7; color: var(--muted-foreground); }
+.loginLegal { margin-top: 18px; text-align: center; font-size: 10px; line-height: 1.8; color: var(--muted-foreground); }
+.loginPrivacy { display: flex; align-items: flex-start; gap: 6px; max-width: 270px; margin-top: 42px; font-size: 10px; line-height: 1.7; color: var(--muted-foreground); }
+.loginPrivacy svg { width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0; stroke-width: 1.6; }
+.mobileBrand { display: none; }
+
+@media (min-width: 1280px) {
+  .hero { gap: 64px; padding-top: 80px; padding-bottom: 70px; }
+  .heroTitle { font-size: clamp(58px, 4.8vw, 68px); }
+  .heroPreview { max-width: 470px; justify-self: end; width: 100%; }
+}
+@media (max-width: 900px) {
+  .hero { gap: 28px; }
+  .heroTitle { font-size: 48px; }
+  .loginIntro, .loginContent { padding: 30px; }
+  .loginStory h2 { font-size: 36px; }
+  .compactContent { padding: 17px; }
+  .compactTime strong { font-size: 24px; }
+  .loginForm h1 { font-size: 26px; }
+}
+@media (max-width: 740px) {
+  .hero { grid-template-columns: 1fr; gap: 40px; padding: 42px 0 36px; }
+  .heroTitle { font-size: 49px; }
+  .heroDescription { max-width: 360px; }
+  .heroPreview { max-width: 420px; width: 100%; justify-self: center; padding: 20px; }
+  .previewCard { display: grid; grid-template-columns: 1fr 1fr; }
+  .previewHeader { padding: 18px 15px; border-bottom: 0; border-right: 1px solid var(--border); }
+  .previewResults { padding: 18px 14px; }
+  .previewPeople { gap: 14px; }
+  .previewPeople li { gap: 7px; }
+  .previewPeople li > span:first-child { width: 28px; height: 28px; font-size: 9px; }
+  .personName { font-size: 10px; }
+  .personStatus { font-size: 9px; }
+  .availableMark { display: none; }
+  .previewTime { font-size: 21px; }
+  .features { gap: 20px; padding: 27px 0; }
+  .login { display: flex; flex-direction: column; min-height: 100svh; }
+  .mobileBrand { display: block; padding: 26px var(--page-gutter); background: var(--card); }
+  .loginContent { order: 1; padding: 32px var(--page-gutter) 48px; }
+  .loginIntro { order: 2; padding: 36px var(--page-gutter); border-right: 0; border-top: 1px solid var(--border); }
+  .loginIntro > a { display: none; }
+  .loginStory { max-width: 380px; margin: 0 auto; padding: 0 0 32px; }
+  .loginStory h2 { font-size: 32px; }
+  .introCaption { text-align: center; }
+  .loginForm { max-width: 340px; }
+  .loginForm h1 { font-size: 29px; }
+  .compactFigure { max-width: 344px; margin-top: 28px; }
+}
+@media (max-width: 430px) {
+  .heroTitle { font-size: clamp(36px, 11vw, 44px); letter-spacing: -2px; }
+  .heroPreview { padding: 16px 12px; }
+  .previewHeader { padding: 15px 11px; }
+  .previewResults { padding: 15px 10px; }
+  .previewHeader > p { font-size: 10px; }
+  .previewDate { font-size: 10px; }
+  .previewDate svg { width: 14px; height: 14px; }
+  .previewTime { font-size: 19px; }
+  .previewTimezone { font-size: 9px; }
+  .previewPeople li > span:first-child { width: 23px; height: 23px; font-size: 8px; }
+  .personName { font-size: 10px; }
+  .personStatus { font-size: 9px; }
+  .previewPeople li { gap: 6px; }
+  .previewResultHeading h3 { font-size: 10px; }
+  .previewCaption { font-size: 10px; }
+  .features { grid-template-columns: 1fr; gap: 22px; }
+  .feature { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 14px; align-items: start; }
+  .feature > svg { margin: 0; }
+  .feature p { max-width: 270px; }
+  .compactTime { gap: 8px; }
+  .compactTime strong { font-size: 24px; }
+  .compactTime > span { font-size: 9px; }
+  .compactMatch > span { font-size: 10px; }
+  .loginForm h1 { font-size: 28px; }
+}

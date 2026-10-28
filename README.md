@@ -2,8 +2,11 @@
 
 A scheduling and availability discovery application: create personal schedules,
 manage availability, and find people who are free during a selected time range.
-**Phase 1 establishes the foundation only.** The placeholder page and API health
-check work; authentication, database access, and scheduling features are not implemented.
+**Phase 1 establishes the infrastructure foundation. Phase 2A adds the frontend design
+foundation:** the approved Landing and Login pages, theme tokens, reusable components,
+and User/Admin shell components. The API health check remains available; authentication,
+database access, and scheduling features are not implemented. Google sign-in is visibly
+disabled until the authentication phase.
 
 ## Stack
 
@@ -26,7 +29,7 @@ Next.js React, accessibility, and import plugins do not declare ESLint 10 suppor
 .
 ├── frontend/
 │   ├── src/
-│   │   ├── app/                # Layout, placeholder page, global styles
+│   │   ├── app/                # Root layout, Landing, Login, global design tokens
 │   │   ├── components/ui/      # shadcn/ui components
 │   │   ├── features/           # Future feature ownership
 │   │   ├── hooks/              # Future reusable hooks
@@ -233,4 +236,22 @@ typecheck, build, and Compose validation; it performs no automatic deployment.
 3. Implement schedules and availability discovery, using the separate visual references.
 4. Add authorization and administration, followed by separately scoped integrations.
 
-Google Calendar, notifications, analytics, and complete UI design are deferred.
+Google Calendar, notifications, analytics, and the remaining application pages are deferred.
+
+## Frontend design foundation (Phase 2A)
+
+Open `/` for the approved Landing page and `/login` for the revised pale-panel Login
+design. All public calls to action navigate to `/login`. The Google button is disabled
+and creates no session. Terms and privacy controls open notices until final policies
+are published. The existing API connection badge is retained in the development footer.
+
+Theme and component colors are centralized in `frontend/src/app/globals.css`; begin with
+the six `--brand-*` variables. Variable Manrope and Noto Sans Thai fonts are served locally,
+with their OFL licenses included. No external font requests or new dependencies are needed.
+
+User/Admin shells are reusable presentation components only: they require account props,
+have no mounted routes, and perform no authentication or authorization. Their future
+navigation entries remain disabled until the corresponding pages are implemented.
+
+See [the design system and scope](frontend/docs/design-system.md) and
+[the Phase 2A verification report](frontend/docs/phase-2a-verification.md).
