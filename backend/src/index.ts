@@ -1,6 +1,20 @@
 import { serve } from "@hono/node-server";
-import { app } from "./app.js";
-import { env } from "./config/env.js";
+import { createApp } from "./app.js";
+import { createAuth } from "./auth/auth.js";
+import { loadEnv } from "./config/env.js";
+import { createDatabase } from "./db/client.js";
+
+let env;
+try { env = loadEnv(); }
+catch (error) { console.error(error instanceof Error ? error.message : "Invalid backend configuration"); process.exit(1); }
+const { db, pool } = createDatabase(env);
+try { await pool.query("select 1"); }
+catch {
+  console.error("PostgreSQL unavailable. Check configuration and start the development container.");
+  await pool.end();
+  process.exit(1);
+}
+const app = createApp(createAuth(env, db), Boolean(env.GOOGLE_CLIENT_ID));
 
 const server = serve(
   { fetch: app.fetch, hostname: env.HOST, port: env.PORT },
@@ -13,7 +27,8 @@ function shutdown() {
   shuttingDown = true;
   const timeout = setTimeout(() => process.exit(1), 10_000);
   timeout.unref();
-  server.close((error) => {
+  server.close(async (error) => {
+    await pool.end();
     clearTimeout(timeout);
     process.exit(error ? 1 : 0);
   });

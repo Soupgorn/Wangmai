@@ -24,6 +24,7 @@ ENV PORT=4000
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=production-dependencies --chown=node:node /app/backend ./backend
 COPY --from=build --chown=node:node /app/backend/dist ./backend/dist
+COPY --from=build --chown=node:node /app/backend/drizzle ./backend/drizzle
 COPY --from=production-dependencies --chown=node:node /app/packages/shared ./packages/shared
 COPY --from=build --chown=node:node /app/packages/shared/dist ./packages/shared/dist
 USER node
