@@ -24,7 +24,7 @@ export function LoginActions({ callbackError }: { callbackError: boolean }) {
     } catch { setError("Couldn’t connect to sign-in. Please try again."); setPending(false); }
   }
   return <>
-    <Button size="lg" className={styles.googleButton} disabled={pending || isPending || Boolean(session)} onClick={() => void signIn()} aria-describedby="google-signin-status"><span aria-hidden="true" className={styles.googleMark}>G</span>{pending ? "Connecting to Google…" : "Continue with Google"}</Button>
-    <p id="google-signin-status" className={styles.signinStatus} role={error || sessionError ? "alert" : "status"}>{error || (sessionError ? "We couldn’t check your session. You can try signing in again." : isPending ? "Checking your session…" : "Sign in securely with your Google account.")}</p>
+    <Button size="lg" className={styles.googleButton} disabled={pending || isPending || Boolean(session)} aria-busy={pending || isPending} onClick={() => void signIn()} aria-describedby="google-signin-status"><span aria-hidden="true" className={styles.googleMark}>G</span>{pending ? "Connecting to Google…" : "Continue with Google"}</Button>
+    <p id="google-signin-status" className={styles.signinStatus} role={error || sessionError ? "alert" : "status"}>{error || (sessionError ? "We couldn’t check your session. You can try signing in again." : isPending ? "" : "Sign in securely with your Google account.")}</p>
   </>;
 }

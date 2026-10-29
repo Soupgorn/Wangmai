@@ -52,7 +52,7 @@ export function AvailabilityPreview({ compact = false }: { compact?: boolean }) 
           </ul>
         </CardContent>
       </Card>
-      <figcaption className={styles.previewCaption}>Same free time. A new plan waiting to happen.</figcaption>
+      <figcaption className={styles.previewCaption}>An illustrative preview with fictional people.</figcaption>
     </figure>
   );
 }

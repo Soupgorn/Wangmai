@@ -48,12 +48,12 @@ test("calendar CRUD, recurrence, validation and focus", async ({ page }) => {
 
   await page.getByRole("button", { name: "Add time", exact: true }).click();
   await dialog.getByLabel("Title", { exact: true }).fill("Dentist");
-  await dialog.getByRole("radio", { name: "Busy", exact: true }).check();
+  await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
   await dialog.getByLabel("Repeats", { exact: true }).selectOption("date");
   await dialog.getByLabel("Start time").fill("18:00");
   await dialog.getByLabel("End time").fill("19:00");
   await dialog.getByRole("button", { name: "Add block" }).click();
-  await expect(page.getByRole("button", { name: /Edit Dentist, busy, 18:00 to 19:00, this date only/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Edit Dentist, unavailable, 18:00 to 19:00, this date only/ })).toBeVisible();
   await page.getByRole("button", { name: "Next week", exact: true }).click();
   await expect(page.getByRole("button", { name: /Edit Dentist/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Today", exact: true }).click();
@@ -62,6 +62,56 @@ test("calendar CRUD, recurrence, validation and focus", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Add time", exact: true })).toBeFocused();
+});
+
+test("calendar titles follow availability and short blocks keep text inside their bounds", async ({ page }) => {
+  await preview(page);
+  await page.getByLabel("Jump to date").fill("2026-11-02");
+  await page.getByRole("button", { name: "Add time", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const title = dialog.getByLabel("Title", { exact: true });
+  await expect(title).toHaveValue("Free time");
+  await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
+  await expect(title).toHaveValue("Unavailable");
+  await dialog.getByRole("radio", { name: "Available", exact: true }).check();
+  await expect(title).toHaveValue("Free time");
+  await title.fill("Work");
+  await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
+  await expect(title).toHaveValue("Work");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+
+  const examples = [
+    { title: "Free time", start: "18:00", end: "18:30", unavailable: false },
+    { title: "Unavailable", start: "19:00", end: "20:00", unavailable: true },
+    { title: "Work session with a long private title that needs to fit", start: "20:00", end: "21:00", unavailable: false },
+  ];
+  for (const example of examples) {
+    await page.getByRole("button", { name: "Add time", exact: true }).click();
+    if (example.unavailable) await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
+    await title.fill(example.title);
+    await dialog.getByLabel("Start time").fill(example.start);
+    await dialog.getByLabel("End time").fill(example.end);
+    await dialog.getByRole("button", { name: "Add block", exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+  }
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const example of examples) {
+      const event = page.getByRole("button", { name: `Edit ${example.title}, ${example.unavailable ? "unavailable" : "available"}, ${example.start} to ${example.end}, repeats weekly`, exact: true });
+      await event.scrollIntoViewIfNeeded();
+      const textFits = await event.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return [...element.querySelectorAll("strong, span")].filter((child) => child.children.length === 0 && getComputedStyle(child).display !== "none").every((child) => {
+          const text = child.getBoundingClientRect();
+          return text.left >= bounds.left && text.right <= bounds.right + 1 && text.top >= bounds.top && text.bottom <= bounds.bottom + 1;
+        });
+      });
+      expect(textFits, `${example.title} text fits a ${width}px calendar`).toBe(true);
+      await event.click();
+      await expect(title).toHaveValue(example.title);
+      await page.keyboard.press("Escape");
+    }
+  }
 });
 
 test("calendar drag and keyboard slot entry", async ({ page }) => {
@@ -151,13 +201,13 @@ test("schedule changes immediately affect the shared status", async ({ page }) =
   await page.getByRole("button", { name: "Add time", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Title", { exact: true }).fill("Private appointment");
-  await dialog.getByRole("radio", { name: "Busy", exact: true }).check();
+  await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
   await dialog.getByLabel("Repeats", { exact: true }).selectOption("date");
   await dialog.getByLabel("Start time").fill("13:30");
   await dialog.getByLabel("End time").fill("14:00");
   await dialog.getByRole("button", { name: "Add block" }).click();
   await page.getByRole("link", { name: "Who’s free?", exact: true }).click();
-  await expect(status).toContainText("Busy");
+  await expect(status).toContainText("Unavailable");
   await expect(page.getByTestId("available-count")).toContainText("3 people");
   await expect(page.getByText("Private appointment", { exact: true })).toHaveCount(0);
 });

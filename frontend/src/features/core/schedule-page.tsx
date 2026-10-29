@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type PointerEvent } from "react";
-import { ChevronLeft, ChevronRight, Globe2, MousePointer2, Plus, Repeat2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Globe2, MousePointer2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCore } from "./core-provider";
 import { BlockEditor, type EditorState } from "./block-editor";
 import { layoutBlocks } from "./calendar-layout";
+import { blockLabels, defaultBlockTitles } from "./block-labels";
 import { addDays, clock, dateValue, formatDate, matchesDate, minutes, weekDates } from "./time";
 import type { CoreSnapshot } from "./types";
 import styles from "./core.module.css";
@@ -46,7 +47,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
 
   function open(date: string, start: string, end: string, returnFocus: HTMLElement, weekly = false) {
     setNotice("");
-    setEditor({ date, returnFocus, draft: { title: "Free time", kind: "available", start, end, timing: weekly ? { type: "weekly", weekday: dateValue(date).dayOfWeek } : { type: "date", date } } });
+    setEditor({ date, returnFocus, draft: { title: defaultBlockTitles.available, kind: "available", start, end, timing: weekly ? { type: "weekly", weekday: dateValue(date).dayOfWeek } : { type: "date", date } } });
   }
   function pointerSlot(event: PointerEvent<HTMLButtonElement>) {
     const top = event.currentTarget.parentElement?.getBoundingClientRect().top ?? event.clientY;
@@ -80,12 +81,14 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
         <div className={styles.toolbarActions}>
           <div className={styles.segmented} aria-label="Calendar view"><button type="button" aria-pressed={view === "week"} onClick={() => setChosenView("week")}>Week</button><button type="button" aria-pressed={view === "day"} onClick={() => setChosenView("day")}>Day</button></div>
           <Button variant="outline" size="sm" onClick={() => setSelected(snapshot.today)}>Today</Button>
-          <Button variant="ghost" size="icon" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => setSelected(addDays(selected, view === "week" ? -7 : -1))}><ChevronLeft aria-hidden="true" /></Button>
-          <Button variant="ghost" size="icon" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => setSelected(addDays(selected, view === "week" ? 7 : 1))}><ChevronRight aria-hidden="true" /></Button>
-          <input type="date" aria-label="Jump to date" value={selected} onChange={(event) => { if (event.target.value) setSelected(event.target.value); }} className={cn(styles.input, "!min-h-9 !w-[140px] !py-1.5 !text-[11px]")} />
+          <div className="inline-flex shrink-0" role="group" aria-label="Calendar navigation">
+            <Button variant="ghost" size="icon" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => setSelected(addDays(selected, view === "week" ? -7 : -1))}><ChevronLeft aria-hidden="true" /></Button>
+            <Button variant="ghost" size="icon" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => setSelected(addDays(selected, view === "week" ? 7 : 1))}><ChevronRight aria-hidden="true" /></Button>
+          </div>
+          <input type="date" aria-label="Jump to date" value={selected} onChange={(event) => { if (event.target.value) setSelected(event.target.value); }} className={cn(styles.input, "!w-[170px] !py-2")} />
         </div>
       </div>
-      {own.length === 0 && <p className="border-b p-4 text-xs text-muted-foreground">A little room to begin. Add your first available or busy block.</p>}
+      {own.length === 0 && <p className="border-b p-4 text-xs text-muted-foreground">A little room to begin. Add your first available or unavailable block.</p>}
       <div ref={scroll} className={styles.calendarScroll} aria-label="Scrollable calendar">
         <div className={cn(styles.calendarInner, view === "day" && styles.dayView)}>
           <div className={styles.dayHeaders} style={{ gridTemplateColumns: gridColumns }}><span aria-hidden="true" />{dates.map((date) => <button type="button" key={date} className={cn(date === selected && styles.selectedDay)} onClick={() => setSelected(date)} aria-label={`Select ${formatDate(date, { weekday: "long", day: "numeric", month: "long" })}`} aria-pressed={date === selected}><span>{formatDate(date, { weekday: "short" })}</span><strong>{dateValue(date).day}</strong></button>)}</div>
@@ -99,15 +102,20 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
                 onPointerUp={(event) => { if (!drag || !event.currentTarget.hasPointerCapture(event.pointerId)) return; const end = pointerSlot(event); event.currentTarget.releasePointerCapture(event.pointerId); skipClick.current = true; open(date, clock(Math.min(drag.first, end) * 30), clock((Math.max(drag.first, end) + 1) * 30), event.currentTarget); setDrag(null); }}
                 onClick={(event) => { if (event.detail !== 0 && skipClick.current) { skipClick.current = false; return; } open(date, clock(slot * 30), clock((slot + 1) * 30), event.currentTarget); }} />)}
               {drag?.day === day && <div className={styles.selection} style={{ top: Math.min(drag.first, drag.last) * 32, height: (Math.abs(drag.last - drag.first) + 1) * 32 }} />}
-              {layoutBlocks(own.filter((block) => matchesDate(block, date))).map(({ block, lane, lanes }) => <button type="button" key={block.id} className={styles.event} data-kind={block.kind} style={{ top: minutes(block.start) / 60 * 64 + 3, height: Math.max(24, (minutes(block.end) - minutes(block.start)) / 60 * 64 - 6), left: `calc(${lane / lanes * 100}% + 4px)`, width: `calc(${100 / lanes}% - 8px)` }} aria-label={`Edit ${block.title}, ${block.kind}, ${block.start} to ${block.end}${block.timing.type === "weekly" ? ", repeats weekly" : ", this date only"}`} onClick={(event) => { setNotice(""); setEditor({ id: block.id, draft: block, date, returnFocus: event.currentTarget }); }}><strong>{block.title}</strong><span>{block.start}–{block.end}</span><span>{block.kind === "available" ? "✓ Available" : "Busy"}{block.timing.type === "weekly" ? " · Weekly" : " · This date"}</span></button>)}
+              {layoutBlocks(own.filter((block) => matchesDate(block, date))).map(({ block, lane, lanes }) => <button type="button" key={block.id} className={styles.event} data-kind={block.kind} style={{ top: minutes(block.start) / 60 * 64 + 3, height: Math.max(24, (minutes(block.end) - minutes(block.start)) / 60 * 64 - 6), left: `calc(${lane / lanes * 100}% + 4px)`, width: `calc(${100 / lanes}% - 8px)` }} aria-label={`Edit ${block.title}, ${blockLabels[block.kind].toLowerCase()}, ${block.start} to ${block.end}${block.timing.type === "weekly" ? ", repeats weekly" : ", this date only"}`} title={`${block.title}\n${block.start}–${block.end}\n${blockLabels[block.kind]}${block.timing.type === "weekly" ? " · Weekly" : " · This date"}`} onClick={(event) => { setNotice(""); setEditor({ id: block.id, draft: block, date, returnFocus: event.currentTarget }); }}>
+                <span className={styles.eventContent}>
+                  <strong className={styles.eventTitle}>{block.title}</strong>
+                  <span className={styles.eventTime}>{block.start}–{block.end}</span>
+                  <span className={styles.eventStatus}>{block.kind === "available" ? "✓ " : ""}{blockLabels[block.kind]}{block.timing.type === "weekly" ? " · Weekly" : " · This date"}</span>
+                </span>
+              </button>)}
             </div>)}
           </div>
         </div>
       </div>
-      <div className={styles.calendarFooter}><span className={styles.legend}>Available</span><span className={styles.legend} data-kind="busy">Busy</span><span className="ml-auto inline-flex items-center gap-2"><Repeat2 className="size-3.5" aria-hidden="true" />Weekly or date-specific</span></div>
+      <div className={styles.calendarFooter}><span className={styles.legend}>{blockLabels.available}</span><span className={styles.legend} data-kind="busy">{blockLabels.busy}</span><span role="status" aria-label="Current timezone" className="ml-auto inline-flex items-center gap-2"><Globe2 className="size-3.5" aria-hidden="true" />Timezone: {snapshot.profile.timezone}</span></div>
     </Card>
-    <div className={styles.footnote}><span className="inline-flex items-center gap-2"><Globe2 aria-hidden="true" className="size-3.5" />All times in {snapshot.profile.timezone}</span><span>Only your availability is shared.</span></div>
-    <p className="mt-3 text-[11px] text-muted-foreground" role="status">{notice}</p>
+    <p className="mt-3 min-h-5 text-xs text-muted-foreground" role="status">{notice}</p>
     {editor && <BlockEditor editor={editor} fallbackFocus={() => addButton.current} onClose={closeEditor} />}
   </>;
 }

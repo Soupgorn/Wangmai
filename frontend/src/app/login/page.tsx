@@ -36,7 +36,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className={styles.loginDescription}>Your people. A little free time.<br />Let’s find a moment that works.</p>
           <LoginActions callbackError={Boolean(error)} />
           <Button asChild variant="outline" className="mt-4 w-full"><Link href="/preview/schedule">Explore the interactive preview</Link></Button>
-          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Fictional data. No sign-in or server saves.</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Fictional data. No sign-in or server saves.</p>
           <div className={styles.loginLegal}>By continuing, you agree to our<br /><PolicyLinks /></div>
           <p className={styles.loginPrivacy}><ShieldCheck aria-hidden="true" /><span>Your schedule stays private until<br />you choose to share your availability.</span></p>
         </div>

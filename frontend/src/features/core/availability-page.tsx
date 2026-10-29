@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Globe2, LockKeyhole, Zap } from "lucide-react";
+import { Globe2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useCore } from "./core-provider";
@@ -34,16 +34,15 @@ function AvailabilityView({ snapshot }: { snapshot: CoreSnapshot }) {
     <div className={styles.finder}>
       <Card className={styles.queryCard}>
         <div className={styles.queryContent}>
-          <h2>Find a moment</h2><p>No back-and-forth needed.</p>
+          <h2>Find a moment</h2>
           <DatePicker value={date} onChange={setDate} />
           <div className={`${styles.twoColumns} mt-5`}>
             <Field label="From"><input type="time" className={styles.input} step={60} required value={start} onChange={(event) => setStart(event.target.value)} aria-invalid={!!error} aria-describedby={error ? "query-error" : undefined} /></Field>
             <Field label="Until"><input type="time" className={styles.input} step={60} required value={end} onChange={(event) => setEnd(event.target.value)} aria-invalid={!!error} aria-describedby={error ? "query-error" : undefined} /></Field>
           </div>
-          <p className="!mt-4 flex items-center gap-2 !text-[10px]"><Globe2 aria-hidden="true" className="size-3.5" />{snapshot.profile.timezone}</p>
-          {self && <div className="mt-5 flex flex-wrap items-center gap-2 border-t pt-4 text-[10px] text-muted-foreground"><span>Your shared status</span><StatusTag state={self.state} /></div>}
+          <p className="!mt-4 flex items-center gap-2 !text-xs"><Globe2 aria-hidden="true" className="size-3.5" />{snapshot.profile.timezone}</p>
+          {self && <div className="mt-5 flex flex-wrap items-center gap-2 border-t pt-4 text-xs text-muted-foreground"><span>Your shared status</span><StatusTag state={self.state} /></div>}
         </div>
-        <div className={styles.queryFooter}><Zap aria-hidden="true" />Results update as you change the time.</div>
       </Card>
       <section aria-label="Availability results">
         <div className={styles.resultsHeading} role="status" aria-live="polite" aria-atomic="true">
@@ -52,7 +51,7 @@ function AvailabilityView({ snapshot }: { snapshot: CoreSnapshot }) {
         </div>
         {error ? <Card><p id="query-error" role="alert" className={`${styles.error} p-5`}>{error}</p></Card> : <>
           <div className={styles.filterTabs} aria-label="Filter availability states">
-            {(["all", "available", "busy", "unknown"] as const).map((state) => <button type="button" key={state} aria-pressed={filter === state} onClick={() => setFilter(state)}>{state === "all" ? "Everyone" : state === "available" ? "Available" : state === "busy" ? "Busy" : "Unknown"} <span>({state === "all" ? people.length : counts[state]})</span></button>)}
+            {(["all", "available", "busy", "unknown"] as const).map((state) => <button type="button" key={state} aria-pressed={filter === state} onClick={() => setFilter(state)}>{state === "all" ? "Everyone" : state === "available" ? "Available" : state === "busy" ? "Unavailable" : "Unknown"} <span>({state === "all" ? people.length : counts[state]})</span></button>)}
           </div>
           <div className={styles.people}>
             {shown.map((result) => <Card key={result.person.id} className={styles.person} data-testid={`person-${result.person.id}`} data-state={result.state}>
@@ -63,7 +62,6 @@ function AvailabilityView({ snapshot }: { snapshot: CoreSnapshot }) {
             {shown.length === 0 && <Card className={styles.empty}><p>{filter === "available" ? "No one has shared availability for this whole time. Try another date or a shorter time range." : "No people have this status for the selected time."}</p></Card>}
           </div>
         </>}
-        <div className={styles.privacy}><LockKeyhole aria-hidden="true" /><strong>Just availability. Nothing more.</strong><p>Your friends’ event names and personal plans stay theirs.</p></div>
       </section>
     </div>
   </>;

@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { useCore } from "./core-provider";
 import { Field } from "./core-ui";
+import { blockLabels, defaultBlockTitles } from "./block-labels";
 import { dateValue, WEEKDAYS } from "./time";
 import type { BlockDraft } from "./types";
 import styles from "./core.module.css";
@@ -33,10 +34,14 @@ export function BlockEditor({ editor, onClose, fallbackFocus }: { editor: Editor
     finally { setPending(false); }
   }
   return <Modal title={editor.id ? "Edit time" : "Make a little space"} description="Changes are for this preview only. Your block titles stay private." onClose={() => onClose()} returnFocus={editor.returnFocus} fallbackFocus={fallbackFocus}>
-    <form className={styles.form} onSubmit={save}>
+    <form className={styles.form} onSubmit={save} aria-busy={pending} aria-describedby={error ? "block-error" : undefined}>
       <fieldset disabled={pending} className="grid gap-5">
         <fieldset><legend className="text-xs text-muted-foreground">Mark this time as</legend>
-          <div className={styles.radioOptions}>{(["available", "busy"] as const).map((kind) => <label key={kind}><input type="radio" name="kind" value={kind} checked={draft.kind === kind} onChange={() => setDraft({ ...draft, kind })} />{kind === "available" ? "Available" : "Busy"}</label>)}</div>
+          <div className={styles.radioOptions}>{(["available", "busy"] as const).map((kind) => <label key={kind}><input type="radio" name="kind" value={kind} checked={draft.kind === kind} onChange={() => setDraft((current) => ({
+            ...current,
+            kind,
+            title: ["", "Busy", ...Object.values(defaultBlockTitles)].includes(current.title.trim()) ? defaultBlockTitles[kind] : current.title,
+          }))} />{blockLabels[kind]}</label>)}</div>
         </fieldset>
         <Field label="Title"><input autoComplete="off" className={styles.input} value={draft.title} maxLength={80} required onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></Field>
         <Field label="Repeats"><select className={styles.input} value={draft.timing.type} onChange={(event) => setDraft({ ...draft, timing: event.target.value === "weekly" ? { type: "weekly", weekday: dateValue(editor.date).dayOfWeek } : { type: "date", date: editor.date } })}><option value="date">Does not repeat</option><option value="weekly">Every week</option></select></Field>
@@ -47,9 +52,8 @@ export function BlockEditor({ editor, onClose, fallbackFocus }: { editor: Editor
           <Field label="Start time"><input className={styles.input} type="time" step={60} required value={draft.start} onChange={(event) => setDraft({ ...draft, start: event.target.value })} /></Field>
           <Field label="End time"><input className={styles.input} type="time" step={60} required value={draft.end} onChange={(event) => setDraft({ ...draft, end: event.target.value })} /></Field>
         </div>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{draft.timing.type === "weekly" ? "Editing or deleting this block changes every weekly occurrence." : "This block applies to the selected date only."} Busy blocks take priority over availability.</p>
       </fieldset>
-      {error && <p className={styles.error} role="alert">{error}</p>}
+      {error && <p id="block-error" className={styles.error} role="alert">{error}</p>}
       {confirmDelete && <div className={styles.deleteNotice}>
         <p>{draft.timing.type === "weekly" ? "Delete this repeating block from every week?" : "Delete this date-specific block?"}</p>
         <div className="flex flex-wrap gap-2"><Button disabled={pending} variant="outline" onClick={() => setConfirmDelete(false)}>Keep block</Button><Button disabled={pending} className="bg-destructive text-white hover:bg-destructive/90" onClick={remove}>Confirm delete</Button></div>

@@ -30,7 +30,7 @@
   --accent-foreground: var(--foreground);
   --destructive: #a45f4d;
   --border: color-mix(in srgb, var(--foreground) 14%, var(--card));
-  --input: var(--border);
+  --input: color-mix(in srgb, var(--foreground) 55%, var(--card));
   --ring: var(--brand-forest);
   --chart-1: var(--brand-lime);
   --chart-2: var(--brand-mist);
@@ -64,10 +64,12 @@
   --type-display: 3.625rem;
   --type-auth-display: 2.5625rem;
   --type-page: 1.8125rem;
-  --type-section: 0.8125rem;
-  --type-body: 0.8125rem;
-  --type-small: 0.6875rem;
-  --type-caption: 0.625rem;
+  --type-section: 0.9375rem;
+  --type-body: 0.9375rem;
+  --type-small: 0.8125rem;
+  --type-caption: 0.75rem;
+  --motion-feedback: 180ms;
+  --ease-feedback: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
@@ -123,7 +125,10 @@
   * { @apply border-border; }
   html { @apply font-sans; scroll-padding-top: 1.5rem; }
   body { @apply bg-background text-foreground antialiased; margin: 0; }
-  button, a { -webkit-tap-highlight-color: transparent; }
+  button, a { -webkit-tap-highlight-color: color-mix(in srgb, var(--primary) 20%, transparent); }
+  input, textarea { caret-color: var(--foreground); }
+  input::placeholder, textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
+  h1, h2 { text-wrap: balance; }
   button:not(:disabled), summary { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
   :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
@@ -142,10 +147,14 @@
 }
 .skip-link:focus { transform: translateY(0); }
 
+.dialog-overlay { animation: dialog-dim var(--motion-feedback) var(--ease-feedback); }
+@keyframes dialog-dim { from { background-color: color-mix(in srgb, var(--foreground) 12%, transparent); } to { background-color: color-mix(in srgb, var(--foreground) 25%, transparent); } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition-property: color, background-color, border-color, box-shadow !important;
+    transition-duration: 100ms !important;
   }
 }

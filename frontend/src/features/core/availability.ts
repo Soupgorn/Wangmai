@@ -24,7 +24,7 @@ export function classifyAvailability(person: Person, blocks: readonly ScheduleBl
   }
 
   if (intervals.some((block) => block.kind === "busy" && block.start < window.end && block.end > window.start)) {
-    return { person, state: "busy", explanation: "Busy during this time." };
+    return { person, state: "busy", explanation: "Unavailable during this time." };
   }
   if (uncertain) return { person, state: "unknown", explanation: "A daylight-saving transition makes this availability uncertain." };
 
