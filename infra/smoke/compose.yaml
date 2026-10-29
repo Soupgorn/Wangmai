@@ -1,0 +1,9 @@
+# LOCAL ONLY. Compose >=2.24.4; always combine with compose.yaml and use this project.
+# No production/development volume names or public listeners are inherited.
+name: wangmai-smoke
+services:
+  caddy:
+    ports: !override
+      - "127.0.0.1:8088:80"
+    volumes:
+      - ./infra/smoke/Caddyfile:/etc/caddy/Caddyfile:ro

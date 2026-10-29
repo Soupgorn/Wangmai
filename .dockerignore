@@ -1,6 +1,6 @@
 .git
 **/node_modules
-**/.next
+**/.next*
 **/dist
 **/*.tsbuildinfo
 **/*.log
@@ -11,3 +11,11 @@
 **/*.key
 .vscode
 .idea
+artifacts
+coverage
+**/test-results
+**/playwright-report
+**/__pycache__
+**/*.dump
+**/*.backup
+backups

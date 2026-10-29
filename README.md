@@ -7,6 +7,11 @@ availability sharing and a real authenticated multi-user finder. The public prev
 remains independent and fictional. See [Phase 5 implementation and verification](docs/phase-5.md)
 and the historical [Phase 4 report](docs/phase-4.md).
 
+For manual production preparation, use the [CloudStack deployment runbook](docs/cloudstack-deployment.md)
+and the separate [.env.production.example](.env.production.example). Production Compose
+requires an explicit release image tag and domain. Do not use the local `.env` or
+development volume for deployment. Phase 6A prepares and verifies locally; it does not deploy.
+
 ## Repository history
 
 The clean branch `feat/auth-database` initially pointed to Phase 1 commit

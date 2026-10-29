@@ -6,7 +6,7 @@ const manrope = localFont({ src: "../assets/fonts/manrope-variable.ttf", variabl
 const notoSansThai = localFont({ src: "../assets/fonts/noto-sans-thai-variable.ttf", variable: "--font-noto-thai", weight: "100 900", display: "swap", preload: false });
 
 export const metadata: Metadata = {
-  title: { default: "Wangmai — Time for your people", template: "%s | Wangmai" },
+  title: { default: "Wangmai", template: "%s | Wangmai" },
   description: "Find out who’s free, without asking everyone. Make a little time together with Wangmai (ว่างมั้ย?).",
   icons: { icon: "/favicon.svg" },
 };
