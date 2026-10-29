@@ -13,7 +13,7 @@ test("small-screen navigation stays in preview with usable control targets", asy
   await expect(page.getByRole("button", { name: "Next month", exact: true })).toBeHidden();
   await page.getByRole("link", { name: "Your space", exact: true }).click();
   await expect(page).toHaveURL(/\/preview\/schedule$/);
-  await expect(page.getByText("Interactive preview", { exact: true })).toBeVisible();
+  await expect(page.getByText("Interactive preview", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
