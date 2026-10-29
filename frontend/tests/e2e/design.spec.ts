@@ -9,8 +9,12 @@ test("small-screen navigation stays in preview with usable control targets", asy
     expect(bounds!.width).toBeGreaterThanOrEqual(44);
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
   }
-  await expect(page.getByLabel("Date", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Next month", exact: true })).toBeHidden();
+  await expect(page.getByTestId("date-selection-summary")).toBeVisible();
+  const nextMonth = page.getByRole("button", { name: "Next month", exact: true });
+  await expect(nextMonth).toBeVisible();
+  const calendarControl = await nextMonth.boundingBox();
+  expect(Math.round(calendarControl!.width)).toBeGreaterThanOrEqual(44);
+  expect(Math.round(calendarControl!.height)).toBeGreaterThanOrEqual(44);
   await page.getByRole("link", { name: "Your space", exact: true }).click();
   await expect(page).toHaveURL(/\/preview\/schedule$/);
   await expect(page.getByText("Interactive preview", { exact: true })).toHaveCount(0);

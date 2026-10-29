@@ -32,6 +32,59 @@ async function schedule(context: BrowserContext): Promise<ScheduleResponse> {
   const response = await context.request.get("/api/v1/me/schedule"); expect(response.status()).toBe(200); return response.json();
 }
 
+test("monthly bulk saves persist and a failed second write retains only unfinished dates", async ({ page, context }, testInfo) => {
+  await login(page, context);
+  await page.getByRole("button", { name: "Month", exact: true }).click();
+  await page.getByLabel("Jump to date").fill("2026-10-29");
+  await page.getByLabel("Select dates").selectOption("multiple");
+  await page.locator('[data-date="2026-10-29"]').click();
+  await page.locator('[data-date="2026-10-30"]').click();
+  await page.getByLabel("Status", { exact: true }).selectOption("personal");
+  let writes = 0;
+  await page.route("**/api/v1/me/schedule/entries", async (route) => {
+    if (route.request().method() === "POST" && ++writes === 2) await route.fulfill({ status: 503, json: { error: { message: "Temporary test failure" } } });
+    else await route.continue();
+  });
+  await page.getByRole("button", { name: "Apply to selected dates" }).click();
+  await expect(page.getByText("1 of 2 dates saved to your account.")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "1 dates remain selected" })).toBeVisible();
+  await expect(page.locator('[data-date="2026-10-29"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator('[data-date="2026-10-30"]')).toHaveAttribute("aria-pressed", "true");
+  await page.unroute("**/api/v1/me/schedule/entries");
+  await page.getByRole("button", { name: "Apply to selected dates" }).click();
+  await expect(page.getByText("1 of 1 dates saved to your account.")).toBeVisible();
+  expect((await schedule(context)).blocks.filter((block) => block.title === "Personal Time")).toHaveLength(2);
+  await page.reload();
+  await page.getByRole("button", { name: "Month", exact: true }).click();
+  await page.getByLabel("Jump to date").fill("2026-10-29");
+  await expect(page.locator('[data-date="2026-10-29"]')).toHaveAttribute("aria-label", /1 time blocks, personal/);
+  await page.screenshot({ path: testInfo.outputPath("persisted-month.png"), fullPage: true, animations: "disabled" });
+  await page.goto("/availability");
+  await expect(page.getByText("Real-user availability is not connected yet.")).toBeVisible();
+  await expect(page.locator('[data-testid^="person-"]')).toHaveCount(0);
+});
+
+test("month agenda defaults recurring edits to one occurrence and preserves the series", async ({ page, context }) => {
+  await login(page, context);
+  await page.getByRole("button", { name: "Add time", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Title", { exact: true }).fill("Monthly routine");
+  await dialog.getByRole("button", { name: "Add block", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole("button", { name: "Month", exact: true }).click();
+  await page.locator('[data-date="2026-11-02"]').click();
+  await page.getByRole("button", { name: /09:00–10:00 · Monthly routine/ }).click();
+  await expect(dialog.getByLabel("Apply changes to")).toHaveValue("occurrence");
+  await dialog.getByLabel("Title", { exact: true }).fill("Just this day");
+  await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.reload();
+  const blocks = (await schedule(context)).blocks;
+  expect(blocks.find((block) => block.title === "Monthly routine")?.excludedDates).toContain("2026-11-02");
+  expect(blocks.find((block) => block.title === "Monthly routine")?.timing.type).toBe("weekly");
+  expect(blocks.find((block) => block.title === "Just this day")?.timing).toEqual({ type: "date", date: "2026-11-02" });
+});
+
 test("weekly CRUD and dated overrides survive refresh, logout and a new session", async ({ page, context }, testInfo) => {
   const seeded = await login(page, context);
   await page.getByLabel("Jump to date").fill("2026-11-02");
@@ -122,7 +175,7 @@ test("timezone settings persist and both public preview and authenticated finder
   await expect(page.getByText("Timezone saved to your account.", { exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByLabel("Timezone", { exact: true })).toHaveValue("UTC");
   await page.getByRole("link", { name: "Who’s free?", exact: true }).click();
-  await expect(page.getByText(/this demo does not use your saved schedule/)).toBeVisible();
+  await expect(page.getByText("Real-user availability is not connected yet.", { exact: true })).toBeVisible();
   const before = await schedule(context); const mutations: string[] = [];
   page.on("request", (request) => { if (request.method() !== "GET" && request.url().includes("/api/v1/me/")) mutations.push(request.url()); });
   await page.goto("/preview/schedule"); await page.getByRole("button", { name: "Add time", exact: true }).click();

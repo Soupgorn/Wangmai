@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useCore } from "./core-provider";
+import { MonthCalendar } from "./month-calendar";
 import { BlockEditor, type EditorState } from "./block-editor";
 import { layoutBlocks } from "./calendar-layout";
 import { blockLabels, defaultBlockTitles } from "./block-labels";
-import { addDays, clock, dateValue, formatDate, matchesDate, minutes, weekDates } from "./time";
+import { addDays, addMonths, clock, dateValue, formatDate, matchesDate, minutes, weekDates } from "./time";
 import type { CoreSnapshot } from "./types";
 import styles from "./core.module.css";
 import { useBlockMotion } from "@/lib/motion";
@@ -31,7 +32,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
   const { mode } = useCore();
   const compact = useSyncExternalStore(subscribe, smallScreen, serverScreen);
   const [selected, setSelected] = useState(snapshot.today);
-  const [chosenView, setChosenView] = useState<"week" | "day" | null>(null);
+  const [chosenView, setChosenView] = useState<"week" | "day" | "month" | null>(null);
   const view = chosenView ?? (compact ? "day" : "week");
   const [editor, setEditor] = useState<EditorState | null>(null);
   const editorSequence = useRef(0);
@@ -88,23 +89,23 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
       <div><h1>A week that feels like you.</h1><p>Make room for plans, people, and a little me time.</p></div>
       <Button ref={addButton} onClick={(event) => open(selected, "09:00", "10:00", event.currentTarget, true)}><Plus aria-hidden="true" />Add time</Button>
     </div>
-    <div className={styles.hint}><MousePointer2 aria-hidden="true" /><span>Click a time slot or drag to add a block. Use Add time for a weekly routine. Your titles stay private.</span></div>
+    <div className={styles.hint}><MousePointer2 aria-hidden="true" /><span>{view === "month" ? "Choose dates to add time together, or open a date to edit its blocks. Your titles stay private." : "Click a time slot or drag to add a block. Use Add time for a weekly routine. Your titles stay private."}</span></div>
     {mode === "persistent" && dates.some((date) => own.some((block) => matchesDate(block, date) && !matchesDate(block, date, snapshot.profile.timezone))) && <p role="status" className="mb-3 text-xs text-muted-foreground">A recurring time is skipped or repeated by daylight saving in this view. That occurrence is not shown; choose a dated replacement at a valid time.</p>}
     <Card className="min-w-0 overflow-hidden">
       <div className={styles.toolbar}>
-        <div><h2>{formatDate(first)}{view === "week" && ` – ${formatDate(last)}`}</h2><p>{dateValue(first).year}{dateValue(first).year !== dateValue(last).year && ` – ${dateValue(last).year}`}</p></div>
+        <div><h2>{view === "month" ? formatDate(selected, { month: "long" }) : formatDate(first)}{view === "week" && ` – ${formatDate(last)}`}</h2><p>{dateValue(first).year}{dateValue(first).year !== dateValue(last).year && ` – ${dateValue(last).year}`}</p></div>
         <div className={styles.toolbarActions}>
-          <div className={styles.segmented} aria-label="Calendar view"><button type="button" aria-pressed={view === "week"} onClick={() => setChosenView("week")}>Week</button><button type="button" aria-pressed={view === "day"} onClick={() => setChosenView("day")}>Day</button></div>
+          <div className={styles.segmented} aria-label="Calendar view"><button type="button" aria-pressed={view === "month"} onClick={() => setChosenView("month")}>Month</button><button type="button" aria-pressed={view === "week"} onClick={() => setChosenView("week")}>Week</button><button type="button" aria-pressed={view === "day"} onClick={() => setChosenView("day")}>Day</button></div>
           <Button variant="outline" size="sm" onClick={() => setSelected(snapshot.today)}>Today</Button>
           <div className="inline-flex shrink-0" role="group" aria-label="Calendar navigation">
-            <Button variant="ghost" size="icon" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => setSelected(addDays(selected, view === "week" ? -7 : -1))}><ChevronLeft aria-hidden="true" /></Button>
-            <Button variant="ghost" size="icon" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => setSelected(addDays(selected, view === "week" ? 7 : 1))}><ChevronRight aria-hidden="true" /></Button>
+            <Button variant="ghost" size="icon" aria-label={view === "month" ? "Previous month" : view === "week" ? "Previous week" : "Previous day"} onClick={() => setSelected(view === "month" ? addMonths(selected, -1) : addDays(selected, view === "week" ? -7 : -1))}><ChevronLeft aria-hidden="true" /></Button>
+            <Button variant="ghost" size="icon" aria-label={view === "month" ? "Next month" : view === "week" ? "Next week" : "Next day"} onClick={() => setSelected(view === "month" ? addMonths(selected, 1) : addDays(selected, view === "week" ? 7 : 1))}><ChevronRight aria-hidden="true" /></Button>
           </div>
           <input type="date" aria-label="Jump to date" value={selected} onChange={(event) => { if (event.target.value) setSelected(event.target.value); }} className={cn(styles.input, "!w-[170px] !py-2")} />
         </div>
       </div>
       {own.length === 0 && <p className="border-b p-4 text-xs text-muted-foreground">A little room to begin. Add your first available or unavailable block.</p>}
-      <div ref={scroll} className={styles.calendarScroll} aria-label="Scrollable calendar">
+      <div hidden={view === "month"}><div ref={scroll} className={styles.calendarScroll} aria-label="Scrollable calendar">
         <div key={`${view}:${first}`} className={cn(styles.calendarInner, "motion-week", view === "day" && styles.dayView)}>
           <div className={styles.dayHeaders} style={{ gridTemplateColumns: gridColumns }}><span aria-hidden="true" />{dates.map((date) => <button type="button" key={date} className={cn(date === selected && styles.selectedDay)} onClick={() => setSelected(date)} aria-label={`Select ${formatDate(date, { weekday: "long", day: "numeric", month: "long" })}`} aria-pressed={date === selected}><span>{formatDate(date, { weekday: "short" })}</span><strong>{dateValue(date).day}</strong></button>)}</div>
           <div className={styles.timeGrid} style={{ gridTemplateColumns: gridColumns }} role="group" aria-label="Schedule time grid. Use arrow keys to navigate slots and Enter to add time.">
@@ -128,6 +129,8 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
           </div>
         </div>
       </div>
+      </div>
+      {view === "month" && <MonthCalendar date={selected} onDate={setSelected} onEdit={(date, target, block) => block ? showEditor({ id: block.id, draft: block, date, returnFocus: target, ...(mode === "persistent" ? { initialScope: "occurrence" as const } : {}) }) : open(date, "09:00", "10:00", target)} />}
       <div className={styles.calendarFooter}><span className={styles.legend}>{blockLabels.available}</span><span className={styles.legend} data-kind="busy">{blockLabels.busy}</span><span role="status" aria-label="Current timezone" className="ml-auto inline-flex items-center gap-2"><Globe2 className="size-3.5" aria-hidden="true" />Timezone: {snapshot.profile.timezone}</span></div>
     </Card>
     <p className="mt-3 min-h-6 text-xs text-muted-foreground" role="status">{notice && <span className="motion-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />{notice}</span>}</p>
