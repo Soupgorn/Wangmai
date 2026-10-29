@@ -22,4 +22,6 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: docker compose --env-file .env.example -f compose.yaml config --quiet
+        env:
+          WANGMAI_IMAGE_TAG: ci-config-validation
       - run: docker compose --env-file .env.example -f compose.dev.yaml config --quiet
