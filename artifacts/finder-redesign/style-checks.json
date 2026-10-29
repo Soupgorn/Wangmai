@@ -1,0 +1,17 @@
+{
+  "color": {
+    "text": "rgb(38, 56, 46)",
+    "background": "rgb(255, 255, 255)",
+    "body": "manrope, \"manrope Fallback\", notoSansThai, \"notoSansThai Fallback\", Arial, sans-serif"
+  },
+  "targets": {
+    "x": 36.14250946044922,
+    "y": 77.765625,
+    "width": 45.421875,
+    "height": 44
+  },
+  "selected": {
+    "text": "rgb(38, 56, 46)",
+    "background": "rgb(139, 195, 74)"
+  }
+}

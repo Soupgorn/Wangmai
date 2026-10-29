@@ -146,7 +146,8 @@ test("instant filtering, counts, busy and unknown states", async ({ page }) => {
   await expect(page.getByTestId("person-beam")).toHaveAttribute("data-state", "busy");
   await expect(page.getByTestId("person-pim")).toHaveAttribute("data-state", "unknown");
   await expect(page.getByRole("button", { name: /Search/i })).toHaveCount(0);
-  await page.getByLabel("Date", { exact: true }).fill("2026-10-29");
+  await page.getByText("Edit dates directly", { exact: true }).click();
+  await page.getByLabel("Start Date", { exact: true }).fill("2026-10-29");
   await expect(page.getByTestId("available-count")).toContainText("2 people");
   await expect(page.getByTestId("person-jamie")).toHaveAttribute("data-state", "busy");
   await page.getByLabel("From", { exact: true }).fill("15:00");

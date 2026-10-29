@@ -12,16 +12,16 @@ import type { BlockDraft } from "./types";
 import styles from "./core.module.css";
 import { BusyIndicator } from "@/components/shared/busy-indicator";
 
-export type EditorState = { instanceKey: number; draft: BlockDraft; id?: string; date: string; returnFocus: HTMLElement | null };
+export type EditorState = { instanceKey: number; initialScope?: "occurrence"; draft: BlockDraft; id?: string; date: string; returnFocus: HTMLElement | null };
 
 export function BlockEditor({ editor, onClose, fallbackFocus }: { editor: EditorState; onClose: (updated?: boolean) => void; fallbackFocus: () => HTMLElement | null }) {
   const { saveBlock, deleteBlock, saveOccurrence, restoreOccurrence, snapshot, retry, mode } = useCore();
   const saved = snapshot?.blocks.find((block) => block.id === editor.id);
   const recurring = mode === "persistent" && editor.id && editor.draft.timing.type === "weekly";
-  const [scope, setScope] = useState<"series" | "occurrence">("series");
+  const [scope, setScope] = useState<"series" | "occurrence">(editor.initialScope ?? "series");
   const pendingRef = useRef(false);
   const closingRef = useRef(false);
-  const [draft, setDraft] = useState<BlockDraft>(structuredClone(editor.draft));
+  const [draft, setDraft] = useState<BlockDraft>(() => ({ ...structuredClone(editor.draft), ...(editor.initialScope === "occurrence" ? { timing: { type: "date", date: editor.date } } : {}) }));
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
