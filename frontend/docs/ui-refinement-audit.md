@@ -1,5 +1,7 @@
 # Wangmai UI refinement audit
 
+Historical report for `ui/improvement` before Phase 4 integration. Its mock-only boundary describes that earlier checkout. See `docs/motion-pass.md` at the repository root for the combined Phase 4 UI and motion implementation.
+
 Branch: `ui/improvement`. Baseline: `0274d286eac95b4dd24d647f95ac94950c050ae9`.
 
 ## Scope and data truth

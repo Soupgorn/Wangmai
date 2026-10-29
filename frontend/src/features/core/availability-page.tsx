@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Globe2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -10,6 +10,7 @@ import { findAvailability } from "./availability";
 import { formatDate } from "./time";
 import type { AvailabilityResult, AvailabilityState, CoreSnapshot } from "./types";
 import styles from "./core.module.css";
+import { useResultMotion } from "@/lib/motion";
 
 export function AvailabilityPage() {
   const { snapshot } = useCore();
@@ -21,6 +22,8 @@ function AvailabilityView({ snapshot }: { snapshot: CoreSnapshot }) {
   const [start, setStart] = useState("13:00");
   const [end, setEnd] = useState("15:00");
   const [filter, setFilter] = useState<AvailabilityState | "all">("all");
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useResultMotion(resultsRef, `${date}:${start}:${end}:${filter}`);
   let results: AvailabilityResult[] = [];
   let error = "";
   try { results = findAvailability(snapshot, { date, start, end, timezone: snapshot.profile.timezone }); }
@@ -46,20 +49,20 @@ function AvailabilityView({ snapshot }: { snapshot: CoreSnapshot }) {
       </Card>
       <section aria-label="Availability results">
         <div className={styles.resultsHeading} role="status" aria-live="polite" aria-atomic="true">
-          <h2 data-testid="available-count">{error ? "Let’s choose a valid time." : `${counts.available} ${counts.available === 1 ? "person" : "people"}, a little room for a plan.`}</h2>
+          <h2 key={`${date}:${start}:${end}`} className="motion-feedback" data-testid="available-count">{error ? "Let’s choose a valid time." : `${counts.available} ${counts.available === 1 ? "person" : "people"}, a little room for a plan.`}</h2>
           <p>{formatDate(date, { weekday: "long", day: "numeric", month: "long" })} &nbsp; {start || "—"}–{end || "—"}</p>
         </div>
-        {error ? <Card><p id="query-error" role="alert" className={`${styles.error} p-5`}>{error}</p></Card> : <>
+        {error ? <Card><p id="query-error" role="alert" className={`${styles.error} motion-error p-5`}>{error}</p></Card> : <>
           <div className={styles.filterTabs} aria-label="Filter availability states">
             {(["all", "available", "busy", "unknown"] as const).map((state) => <button type="button" key={state} aria-pressed={filter === state} onClick={() => setFilter(state)}>{state === "all" ? "Everyone" : state === "available" ? "Available" : state === "busy" ? "Unavailable" : "Unknown"} <span>({state === "all" ? people.length : counts[state]})</span></button>)}
           </div>
-          <div className={styles.people}>
+          <div ref={resultsRef} className={styles.people}>
             {shown.map((result) => <Card key={result.person.id} className={styles.person} data-testid={`person-${result.person.id}`} data-state={result.state}>
               <UserAvatar name={result.person.displayName} tone={result.person.id === "chris" ? "forest" : result.person.id === "mint" || result.person.id === "beam" ? "neutral" : "sage"} className="!size-12 !text-sm" decorative />
               <div className={styles.personDetails}><h3>{result.person.displayName}</h3><p>{result.explanation}</p></div>
               <StatusTag state={result.state} />
             </Card>)}
-            {shown.length === 0 && <Card className={styles.empty}><p>{filter === "available" ? "No one has shared availability for this whole time. Try another date or a shorter time range." : "No people have this status for the selected time."}</p></Card>}
+            {shown.length === 0 && <Card className={`${styles.empty} motion-feedback`}><p>{filter === "available" ? "No one has shared availability for this whole time. Try another date or a shorter time range." : "No people have this status for the selected time."}</p></Card>}
           </div>
         </>}
       </section>

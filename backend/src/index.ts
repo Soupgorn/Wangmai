@@ -14,7 +14,7 @@ catch {
   await pool.end();
   process.exit(1);
 }
-const app = createApp(createAuth(env, db), Boolean(env.GOOGLE_CLIENT_ID));
+const app = createApp(createAuth(env, db), Boolean(env.GOOGLE_CLIENT_ID), db);
 
 const server = serve(
   { fetch: app.fetch, hostname: env.HOST, port: env.PORT },

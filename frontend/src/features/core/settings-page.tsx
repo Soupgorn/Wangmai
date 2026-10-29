@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { LogOut } from "lucide-react";
+import { CheckCircle2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BusyIndicator } from "@/components/shared/busy-indicator";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useCore } from "./core-provider";
@@ -21,7 +22,8 @@ export function SettingsPage() {
 
 function SettingsView({ profile }: { profile: Profile }) {
   const account = useAccount();
-  const { updateProfile } = useCore();
+  const { updateProfile, mode } = useCore();
+  const persistent = mode === "persistent";
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [timezone, setTimezone] = useState(profile.timezone);
   const [shareAvailability, setShareAvailability] = useState(profile.shareAvailability);
@@ -36,26 +38,27 @@ function SettingsView({ profile }: { profile: Profile }) {
     finally { setPending(false); }
   }
   return <>
-    <div className={styles.heading}><div><h1>Profile</h1><p>Try your preferences here. These changes apply to this preview only.</p></div></div>
+    <div className={styles.heading}><div><h1>Profile</h1><p>{persistent ? "Your Google profile and saved schedule timezone." : "Try your preferences here. These changes apply to this preview only."}</p></div></div>
     <div className={styles.settings}>
       <Card className={styles.settingsCard}><form onSubmit={save} aria-busy={pending}>
         <section className={styles.settingsSection} aria-label="Profile information">
           <div className={styles.profile}><UserAvatar name={account?.name ?? profile.displayName} decorative className="!size-14 !text-base" /><div><strong>{account?.name ?? profile.displayName}</strong><p>{account ? account.email : "Preview profile. No Google account connected."}</p></div></div>
           <div className={styles.twoColumns}>
-            <Field label="Display name"><input className={styles.input} autoComplete="off" value={displayName} required maxLength={60} onChange={(event) => { setDisplayName(event.target.value); setSaved(false); }} /></Field>
-            <Field label="Example email"><input className={styles.input} type="email" value={profile.email} readOnly /></Field>
+            <Field label="Display name"><input className={styles.input} autoComplete="off" value={displayName} readOnly={persistent} required maxLength={60} onChange={(event) => { setDisplayName(event.target.value); setSaved(false); }} /></Field>
+            <Field label={persistent ? "Google email" : "Example email"}><input className={styles.input} type="email" value={profile.email} readOnly aria-describedby="email-note" /></Field>
           </div>
+          <p id="email-note" className="text-[11px] text-muted-foreground">{persistent ? "Name and email come from Google and are not changed by schedule settings." : "This fictional email is part of the preview, not a signed-in account."}</p>
         </section>
         <section className={styles.settingsSection} aria-labelledby="privacy-heading">
           <h2 id="privacy-heading">Availability & privacy</h2>
-          <div className={styles.switchRow}><div><strong id="sharing-label">Share my availability</strong><p id="sharing-description">Let people see when you’re free. Turning this off makes your shared status unknown.</p></div><button type="button" className={styles.switch} role="switch" aria-labelledby="sharing-label" aria-describedby="sharing-description" aria-checked={shareAvailability} onClick={() => { setShareAvailability(!shareAvailability); setSaved(false); }}><span /></button></div>
+          <div className={styles.switchRow}><div><strong id="sharing-label">Share my availability</strong><p id="sharing-description">{persistent ? "Availability sharing remains part of the separate public preview. Your saved schedule is private." : "Let people see when you’re free. Turning this off makes your shared status unknown."}</p></div><button disabled={persistent} type="button" className={styles.switch} role="switch" aria-labelledby="sharing-label" aria-describedby="sharing-description" aria-checked={shareAvailability} onClick={() => { setShareAvailability(!shareAvailability); setSaved(false); }}><span /></button></div>
         </section>
         <section className={styles.settingsSection} aria-labelledby="timezone-heading">
           <h2 id="timezone-heading">Time & region</h2>
           <select aria-label="Timezone" className={styles.input} value={timezone} onChange={(event) => { setTimezone(event.target.value); setSaved(false); }}>{TIMEZONES.map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}</select>
         </section>
-        {error && <p role="alert" className={`${styles.error} px-6 pt-4`}>{error}</p>}
-        <div className={styles.settingsFooter}><span role="status" className={styles.saved}>{saved && !dirty ? "Updated in this preview only." : dirty ? "Unsaved preview changes" : ""}</span><Button type="submit" disabled={pending || !dirty}>{pending ? "Updating preview…" : "Save changes"}</Button></div>
+        {error && <p role="alert" className={`${styles.error} motion-error px-6 pt-4`}>{error}</p>}
+        <div className={styles.settingsFooter}><span role="status" className={styles.saved}>{saved && !dirty ? <span className="motion-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />{persistent ? "Timezone saved to your account." : "Updated in this preview only."}</span> : dirty ? persistent ? "Unsaved timezone change" : "Unsaved preview changes" : ""}</span><Button type="submit" aria-busy={pending} disabled={pending || !dirty}>{pending && <BusyIndicator />}{pending ? persistent ? "Saving…" : "Updating preview…" : "Save changes"}</Button></div>
       </form></Card>
       <aside className="pt-1">
         {account ? <LogoutButton /> : <Button asChild variant="outline" size="lg" className="cursor-pointer"><Link href="/login"><LogOut aria-hidden="true" />Log out of preview</Link></Button>}

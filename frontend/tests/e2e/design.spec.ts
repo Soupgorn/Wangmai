@@ -44,7 +44,7 @@ test("reduced motion retains selection feedback without dialog animation", async
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/preview/schedule");
   await page.getByRole("button", { name: "Add time", exact: true }).click();
-  expect(await page.locator(".dialog-overlay").evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  expect(await page.locator(".motion-overlay").evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   const available = page.getByRole("radio", { name: "Available", exact: true });
   const unavailable = page.getByRole("radio", { name: "Unavailable", exact: true });
   const before = await available.locator("..").evaluate((element) => getComputedStyle(element).backgroundColor);

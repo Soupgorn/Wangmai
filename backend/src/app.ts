@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import type { HealthResponse } from "@wangmai/shared";
 import type { Auth } from "./auth/auth.js";
+import type { Database } from "./db/client.js";
+import { scheduleRoutes } from "./modules/schedule/routes.js";
 
-export function createApp(auth: Auth, googleEnabled: boolean) {
+export function createApp(auth: Auth, googleEnabled: boolean, db?: Database) {
   const app = new Hono();
 
   app.use("/api/*", async (c, next) => {
@@ -33,5 +35,6 @@ export function createApp(auth: Auth, googleEnabled: boolean) {
     const { id, name, email, emailVerified, image } = session.user;
     return c.json({ user: { id, name, email, emailVerified, image: image ?? null } });
   });
+  if (db) app.route("/api/v1/me", scheduleRoutes(auth, db));
   return app;
 }

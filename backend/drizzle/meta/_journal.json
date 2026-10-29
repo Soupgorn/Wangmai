@@ -8,6 +8,13 @@
       "when": 1793204763060,
       "tag": "0000_majestic_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793213925224,
+      "tag": "0001_next_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }
