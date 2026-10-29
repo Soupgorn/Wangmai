@@ -1,12 +1,18 @@
-# Reserved placeholder. Configure real DNS and CloudStack ingress before HTTPS.
-{$WANGMAI_DOMAIN:wangmai.example.com} {
-    @api path /api /api/*
-    handle @api {
-        # handle (not handle_path) preserves /api for Hono and future auth routes.
-        reverse_proxy backend:4000
-    }
+# Starting this production configuration enables public ACME. Follow the runbook first.
+{$WANGMAI_DOMAIN} {
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	@api path /api /api/*
+	handle @api {
+		# Preserve /api, including the Google OAuth callback. Do not log request URLs:
+		# OAuth query strings can contain authorization codes.
+		reverse_proxy backend:4000
+	}
 
-    handle {
-        reverse_proxy frontend:3000
-    }
+	handle {
+		reverse_proxy frontend:3000
+	}
 }
