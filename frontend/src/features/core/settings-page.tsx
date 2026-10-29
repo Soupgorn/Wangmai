@@ -45,9 +45,8 @@ function SettingsView({ profile }: { profile: Profile }) {
           <div className={styles.profile}><UserAvatar name={account?.name ?? profile.displayName} decorative className="!size-14 !text-base" /><div><strong>{account?.name ?? profile.displayName}</strong><p>{account ? account.email : "Preview profile. No Google account connected."}</p></div></div>
           <div className={styles.twoColumns}>
             <Field label="Display name"><input className={styles.input} autoComplete="off" value={displayName} readOnly={persistent} required maxLength={60} onChange={(event) => { setDisplayName(event.target.value); setSaved(false); }} /></Field>
-            <Field label={persistent ? "Google email" : "Example email"}><input className={styles.input} type="email" value={profile.email} readOnly aria-describedby="email-note" /></Field>
+            <Field label={persistent ? "Google email" : "Example email"}><input className={styles.input} type="email" value={profile.email} readOnly /></Field>
           </div>
-          <p id="email-note" className="text-[11px] text-muted-foreground">{persistent ? "Name and email come from Google and are not changed by schedule settings." : "This fictional email is part of the preview, not a signed-in account."}</p>
         </section>
         <section className={styles.settingsSection} aria-labelledby="privacy-heading">
           <h2 id="privacy-heading">Availability & privacy</h2>
