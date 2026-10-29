@@ -22,7 +22,7 @@ export function SettingsPage() {
 
 function SettingsView({ profile }: { profile: Profile }) {
   const account = useAccount();
-  const { updateProfile, mode } = useCore();
+  const { updateProfile, mode, retry } = useCore();
   const persistent = mode === "persistent";
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [timezone, setTimezone] = useState(profile.timezone);
@@ -38,7 +38,7 @@ function SettingsView({ profile }: { profile: Profile }) {
     finally { setPending(false); }
   }
   return <>
-    <div className={styles.heading}><div><h1>Profile</h1><p>{persistent ? "Your Google profile and saved schedule timezone." : "Try your preferences here. These changes apply to this preview only."}</p></div></div>
+    <div className={styles.heading}><div><h1>Profile</h1><p>{persistent ? "Your Google profile, sharing preferences, and schedule timezone." : "Try your preferences here. These changes apply to this preview only."}</p></div></div>
     <div className={styles.settings}>
       <Card className={styles.settingsCard}><form onSubmit={save} aria-busy={pending}>
         <section className={styles.settingsSection} aria-label="Profile information">
@@ -50,14 +50,14 @@ function SettingsView({ profile }: { profile: Profile }) {
         </section>
         <section className={styles.settingsSection} aria-labelledby="privacy-heading">
           <h2 id="privacy-heading">Availability & privacy</h2>
-          <div className={styles.switchRow}><div><strong id="sharing-label">Share my availability</strong><p id="sharing-description">{persistent ? "Availability sharing remains part of the separate public preview. Your saved schedule is private." : "Let people see when you’re free. Turning this off makes your shared status unknown."}</p></div><button disabled={persistent} type="button" className={styles.switch} role="switch" aria-labelledby="sharing-label" aria-describedby="sharing-description" aria-checked={shareAvailability} onClick={() => { setShareAvailability(!shareAvailability); setSaved(false); }}><span /></button></div>
+          <div className={styles.switchRow}><div><strong id="sharing-label">Share my availability</strong><p id="sharing-description">{persistent ? "Off by default. When enabled, signed-in people can find your name, Google profile picture, and availability status. Event titles and your email stay private. Turning this off removes you from new search results after you save." : "Let people see when you’re free. Turning this off makes your shared status unknown."}</p></div><button disabled={pending} type="button" className={styles.switch} role="switch" aria-labelledby="sharing-label" aria-describedby="sharing-description" aria-checked={shareAvailability} onClick={() => { setShareAvailability(!shareAvailability); setSaved(false); }}><span /></button></div>
         </section>
         <section className={styles.settingsSection} aria-labelledby="timezone-heading">
           <h2 id="timezone-heading">Time & region</h2>
-          <select aria-label="Timezone" className={styles.input} value={timezone} onChange={(event) => { setTimezone(event.target.value); setSaved(false); }}>{TIMEZONES.map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}</select>
+          <select aria-label="Timezone" disabled={pending} className={styles.input} value={timezone} onChange={(event) => { setTimezone(event.target.value); setSaved(false); }}>{[...new Set([profile.timezone, ...TIMEZONES])].map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}</select>
         </section>
-        {error && <p role="alert" className={`${styles.error} motion-error px-6 pt-4`}>{error}</p>}
-        <div className={styles.settingsFooter}><span role="status" className={styles.saved}>{saved && !dirty ? <span className="motion-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />{persistent ? "Timezone saved to your account." : "Updated in this preview only."}</span> : dirty ? persistent ? "Unsaved timezone change" : "Unsaved preview changes" : ""}</span><Button type="submit" aria-busy={pending} disabled={pending || !dirty}>{pending && <BusyIndicator />}{pending ? persistent ? "Saving…" : "Updating preview…" : "Save changes"}</Button></div>
+        {error && <div role="alert" className="motion-error px-6 pt-4"><p className={styles.error}>{error}</p>{persistent && <Button variant="outline" onClick={retry}>Reload preferences</Button>}</div>}
+        <div className={styles.settingsFooter}><span role="status" className={styles.saved}>{saved && !dirty ? <span className="motion-feedback"><CheckCircle2 aria-hidden="true" className="size-4" />{persistent ? "Preferences saved to your account." : "Updated in this preview only."}</span> : dirty ? persistent ? "Unsaved preference changes" : "Unsaved preview changes" : ""}</span><Button type="submit" aria-busy={pending} disabled={pending || !dirty}>{pending && <BusyIndicator />}{pending ? persistent ? "Saving…" : "Updating preview…" : "Save changes"}</Button></div>
       </form></Card>
       <aside className="pt-1">
         {account ? <LogoutButton /> : <Button asChild variant="outline" size="lg" className="cursor-pointer"><Link href="/login"><LogOut aria-hidden="true" />Log out of preview</Link></Button>}

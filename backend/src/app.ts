@@ -3,6 +3,7 @@ import type { HealthResponse } from "@wangmai/shared";
 import type { Auth } from "./auth/auth.js";
 import type { Database } from "./db/client.js";
 import { scheduleRoutes } from "./modules/schedule/routes.js";
+import { availabilityRoutes } from "./modules/availability/routes.js";
 
 export function createApp(auth: Auth, googleEnabled: boolean, db?: Database) {
   const app = new Hono();
@@ -36,5 +37,6 @@ export function createApp(auth: Auth, googleEnabled: boolean, db?: Database) {
     return c.json({ user: { id, name, email, emailVerified, image: image ?? null } });
   });
   if (db) app.route("/api/v1/me", scheduleRoutes(auth, db));
+  if (db) app.route("/api/v1/availability", availabilityRoutes(auth, db));
   return app;
 }

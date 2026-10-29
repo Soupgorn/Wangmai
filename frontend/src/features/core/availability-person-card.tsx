@@ -1,4 +1,7 @@
+"use client";
+
 import { Check, CalendarDays } from "lucide-react";
+import Image from "next/image";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { StatusTag } from "./core-ui";
 import { formatDate } from "./time";
@@ -13,7 +16,7 @@ export function AvailabilityPersonCard({ summary, result, range, onDate }: {
   const state = result?.state ?? "available";
   return <article className={styles.personCard} data-result-key={person.id} data-testid={`person-${person.id}`} data-state={state} aria-label={range ? `${person.displayName}, available ${availableDates.length} of ${totalDays} days` : `${person.displayName}, ${state === "busy" ? "Unavailable" : state}`}>
     <div className={styles.personHeader}>
-      <UserAvatar name={person.displayName} decorative tone={person.id === "chris" ? "forest" : person.id === "mint" || person.id === "beam" ? "neutral" : "sage"} className="!size-11 !text-sm" />
+      <span className={styles.resultAvatar}><UserAvatar name={person.displayName} decorative tone={person.id === "chris" ? "forest" : person.id === "mint" || person.id === "beam" ? "neutral" : "sage"} className="!size-11 !text-sm" />{person.image && <Image key={person.image} src={person.image} alt="" width={44} height={44} unoptimized referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = "none"; }} />}</span>
       <div className={styles.personName}><h3>{person.displayName}</h3><p>{range ? <>Available <strong>{availableDates.length} of {totalDays}</strong> days</> : result?.explanation}</p></div>
       {range ? <span className={styles.matchTag}><Check aria-hidden="true" />{availableDates.length === totalDays ? "Every day" : "Some days"}</span> : <StatusTag state={state} />}
     </div>

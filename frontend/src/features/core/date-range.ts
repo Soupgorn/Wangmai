@@ -1,14 +1,9 @@
-import { addDays, dateValue, queryWindow, validateBlock } from "./time";
+import { inclusiveCalendarDates } from "@wangmai/shared";
+import { queryWindow, validateBlock } from "./time";
 import { findAvailability } from "./availability";
 import type { AvailabilityQuery, AvailabilityResult, BlockDraft, CoreSnapshot } from "./types";
 
-export function inclusiveDates(start: string, end: string, maximum = 31): string[] {
-  const first = dateValue(start); const last = dateValue(end);
-  const length = first.until(last).days + 1;
-  if (length < 1) throw new Error("End date must be on or after start date.");
-  if (length > maximum) throw new Error(`Choose at most ${maximum} calendar days.`);
-  return Array.from({ length }, (_, index) => addDays(start, index));
-}
+export const inclusiveDates = inclusiveCalendarDates;
 
 export type RangeQuery = Omit<AvailabilityQuery, "date"> & { startDate: string; endDate: string };
 /** Phase 5 contract: status-only results for each local calendar date, never private blocks. */

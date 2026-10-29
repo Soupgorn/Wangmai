@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { scheduleDate, scheduleInstant, scheduleMinutes, scheduleTimezone, validateScheduleBlock } from "@wangmai/shared";
+import { availabilityWindow, scheduleDate, scheduleInstant, scheduleMinutes, scheduleTimezone, validateScheduleBlock } from "@wangmai/shared";
 import type { AvailabilityQuery, BlockDraft, ScheduleBlock } from "./types";
 
 export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
@@ -27,11 +27,7 @@ export function instant(date: string, time: string, timezone: string) {
 }
 
 export function queryWindow(query: AvailabilityQuery) {
-  dateValue(query.date);
-  if (minutes(query.start) >= 1440 || minutes(query.end) <= minutes(query.start)) throw new Error("End time must be after start time on the same day.");
-  const start = instant(query.date, query.start, query.timezone);
-  const end = instant(query.date, query.end, query.timezone);
-  return { start, end };
+  return availabilityWindow(query);
 }
 
 export function validateBlock(draft: BlockDraft, timezone: string) {

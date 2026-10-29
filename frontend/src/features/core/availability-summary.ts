@@ -1,8 +1,8 @@
 import type { RangeResults } from "./date-range";
-import type { AvailabilityState, Person } from "./types";
+import type { AvailabilityState, PublicPerson } from "./types";
 
 export type PersonAvailability = {
-  person: Person;
+  person: PublicPerson;
   days: { date: string; state: AvailabilityState }[];
   availableDates: string[];
   totalDays: number;

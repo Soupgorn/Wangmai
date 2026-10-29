@@ -49,9 +49,10 @@ export type User = typeof user.$inferSelect;
 export const schedulePreference = pgTable("schedule_preference", {
   userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
   timezone: text("timezone").default("Asia/Bangkok").notNull(),
+  shareAvailability: boolean("share_availability").default(false).notNull(),
   revision: integer("revision").default(0).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [check("schedule_revision_nonnegative", sql`${t.revision} >= 0`)]);
+}, (t) => [check("schedule_revision_nonnegative", sql`${t.revision} >= 0`), index("schedule_shared_user_idx").on(t.userId).where(sql`${t.shareAvailability} = true`)]);
 
 export const scheduleEntry = pgTable("schedule_entry", {
   id: uuid("id").defaultRandom().primaryKey(),

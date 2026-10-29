@@ -31,7 +31,7 @@ export class DatabaseCoreRepository implements CoreRepository {
   private apply(value: unknown): CoreSnapshot {
     this.schedule = scheduleResponseSchema.parse(value);
     if (!this.user) throw new Error("Load your account before editing your schedule.");
-    return { today: todayIn(this.schedule.timezone), profile: { id: this.user.id, displayName: this.user.name, email: this.user.email, timezone: this.schedule.timezone, shareAvailability: false }, people: [], blocks: this.schedule.blocks };
+    return { today: todayIn(this.schedule.timezone), profile: { id: this.user.id, displayName: this.user.name, email: this.user.email, image: this.user.image, timezone: this.schedule.timezone, shareAvailability: this.schedule.shareAvailability }, people: [], blocks: this.schedule.blocks };
   }
   async getSnapshot() {
     const [profile, schedule] = await Promise.all([this.request(""), this.request("/schedule")]);
@@ -62,6 +62,6 @@ export class DatabaseCoreRepository implements CoreRepository {
     return this.apply(await this.request(`/schedule/entries/${encodeURIComponent(id)}/exceptions/${encodeURIComponent(date)}`, "DELETE"));
   }
   async updateProfile(patch: Pick<Profile, "displayName" | "timezone" | "shareAvailability">) {
-    return this.apply(await this.request("/schedule/preferences", "PATCH", { timezone: patch.timezone }));
+    return this.apply(await this.request("/schedule/preferences", "PATCH", { timezone: patch.timezone, shareAvailability: patch.shareAvailability }));
   }
 }
