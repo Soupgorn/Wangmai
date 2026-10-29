@@ -1,0 +1,2 @@
+ALTER TABLE "schedule_preference" ADD COLUMN "share_availability" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE INDEX "schedule_shared_user_idx" ON "schedule_preference" USING btree ("user_id") WHERE "schedule_preference"."share_availability" = true;

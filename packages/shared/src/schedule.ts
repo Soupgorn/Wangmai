@@ -60,7 +60,7 @@ export const scheduleBlockSchema = blockDraftSchema.safeExtend({
   exceptionFor: z.object({ id: z.string().uuid(), date: dateSchema }).optional(),
 });
 export const scheduleResponseSchema = z.object({
-  timezone: timezoneSchema, revision: z.number().int().min(0),
+  timezone: timezoneSchema, revision: z.number().int().min(0), shareAvailability: z.boolean(),
   blocks: z.array(scheduleBlockSchema),
 });
 export type ScheduleResponse = z.infer<typeof scheduleResponseSchema>;

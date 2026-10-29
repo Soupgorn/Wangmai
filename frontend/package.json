@@ -10,7 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
     "test:unit": "tsx --test src/features/core/__tests__/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "tsx ../backend/tests/run-browser-tests.ts"
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",

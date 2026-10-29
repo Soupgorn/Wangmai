@@ -4,9 +4,12 @@ export type BlockKind = BlockDraft["kind"];
 export type BlockTiming = BlockDraft["timing"];
 
 export type ScheduleBlock = BlockDraft & { id: string; ownerId: string; excludedDates?: string[] | undefined; exceptionFor?: { id: string; date: string } | undefined };
-export type Person = {
+export type PublicPerson = {
   id: string;
   displayName: string;
+  image?: string | null | undefined;
+};
+export type Person = PublicPerson & {
   timezone: string;
   shareAvailability: boolean;
 };
@@ -19,7 +22,7 @@ export type CoreSnapshot = {
 };
 export type AvailabilityQuery = { date: string; start: string; end: string; timezone: string };
 export type AvailabilityState = "available" | "busy" | "unknown";
-export type AvailabilityResult = { person: Person; state: AvailabilityState; explanation: string };
+export type AvailabilityResult = { person: PublicPerson; state: AvailabilityState; explanation: string };
 
 /** Replace this adapter with Hono requests; views never import mock fixtures. */
 export interface CoreRepository {

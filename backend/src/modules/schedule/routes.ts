@@ -35,7 +35,7 @@ async function snapshot(db: Executor, userId: string): Promise<ScheduleResponse>
     if (row.title === null) continue;
     blocks.push({ id: row.id, ownerId: userId, title: row.title, kind: row.kind!, start: clock(row.startMinute!), end: clock(row.endMinute!), timing: { type: "date", date: row.date }, exceptionFor: { id: row.recurringId, date: row.date }, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
   }
-  return { timezone: prefs?.timezone ?? "Asia/Bangkok", revision: prefs?.revision ?? 0, blocks };
+  return { timezone: prefs?.timezone ?? "Asia/Bangkok", revision: prefs?.revision ?? 0, shareAvailability: prefs?.shareAvailability ?? false, blocks };
 }
 function validate(draft: BlockDraft, timezone: string) {
   try { validateScheduleBlock(draft, timezone); }
@@ -158,11 +158,11 @@ export function scheduleRoutes(auth: Auth, db: Database) {
     }));
   });
   routes.patch("/schedule/preferences", async (c) => {
-    const { timezone } = z.object({ timezone: timezoneSchema }).strict().parse(await json(c.req)); const userId = c.get("userId");
+    const patch = z.object({ timezone: timezoneSchema.optional(), shareAvailability: z.boolean().optional() }).strict().refine((value) => Object.keys(value).length > 0, "Supply a preference change.").parse(await json(c.req)); const userId = c.get("userId");
     return c.json(await mutate(userId, c.req.header("If-Match"), async (tx) => {
       const existing = await snapshot(tx, userId);
-      for (const block of existing.blocks) validate({ title: block.title, kind: block.kind, start: block.start, end: block.end, timing: block.timing }, timezone);
-      await tx.update(preference).set({ timezone }).where(eq(preference.userId, userId));
+      if (patch.timezone) for (const block of existing.blocks) validate({ title: block.title, kind: block.kind, start: block.start, end: block.end, timing: block.timing }, patch.timezone);
+      await tx.update(preference).set(patch).where(eq(preference.userId, userId));
     }));
   });
   return routes;

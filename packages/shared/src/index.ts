@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from "./schedule.js";
+export * from "./availability.js";
 
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),

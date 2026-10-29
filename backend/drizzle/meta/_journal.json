@@ -15,6 +15,13 @@
       "when": 1793213925224,
       "tag": "0001_next_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793293457446,
+      "tag": "0002_goofy_guardsmen",
+      "breakpoints": true
     }
   ]
 }

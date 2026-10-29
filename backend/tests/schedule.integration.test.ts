@@ -45,7 +45,7 @@ test("private PostgreSQL schedule lifecycle", { timeout: 60_000 }, async (t) => 
     let weekly: ScheduleResponse["blocks"][number];
     let dated: ScheduleResponse["blocks"][number];
     await t.test("fresh migration, empty private schedule, required revision and unauthenticated requests", async () => {
-      assert.deepEqual(await read(), { timezone: "Asia/Bangkok", revision: 0, blocks: [] });
+      assert.deepEqual(await read(), { timezone: "Asia/Bangkok", revision: 0, shareAvailability: false, blocks: [] });
       for (const [path, method] of [["/schedule", "GET"], ["/schedule/entries", "POST"], [`/schedule/entries/${randomUUID()}`, "PATCH"], [`/schedule/entries/${randomUUID()}`, "DELETE"], ["/availability/weekly", "GET"], ["/availability/weekly", "PUT"], ["/schedule/preferences", "PATCH"]]) {
         assert.equal((await request(null, path!, method, method === "GET" ? undefined : {})).status, 401);
       }
@@ -152,7 +152,7 @@ test("private PostgreSQL schedule lifecycle", { timeout: 60_000 }, async (t) => 
       const parent = (await read()).blocks.find((row) => row.timing.type === "weekly")!;
       await assert.rejects(db.insert(scheduleException).values({ userId: b.user.id, recurringId: parent.id, date: "2026-11-04" }));
     });
-    await t.test("schedule database failures are sanitized and no multi-user finder API is introduced", async () => {
+    await t.test("schedule database failures are sanitized and the finder rejects missing filters", async () => {
       const unavailableUrl = new URL(env.DATABASE_URL); unavailableUrl.port = "1";
       const unavailable = createDatabase({ ...env, DATABASE_URL: unavailableUrl.href, POSTGRES_PORT: 1 });
       try {
@@ -160,7 +160,7 @@ test("private PostgreSQL schedule lifecycle", { timeout: 60_000 }, async (t) => 
         assert.equal(response.status, 503);
         assert.deepEqual(await response.json(), { error: { code: "DATABASE_UNAVAILABLE", message: "Your schedule is temporarily unavailable. Please try again." } });
       } finally { await unavailable.pool.end(); }
-      assert.equal((await app.request(`${env.BETTER_AUTH_URL}/api/v1/availability`, { headers: { cookie: a.cookie } })).status, 404);
+      assert.equal((await app.request(`${env.BETTER_AUTH_URL}/api/v1/availability`, { headers: { cookie: a.cookie } })).status, 400);
     });
     await t.test("same-origin protection and persistence after logout/new session/auth instance", async () => {
       const revision = (await read()).revision;

@@ -60,8 +60,8 @@ test("monthly bulk saves persist and a failed second write retains only unfinish
   await expect(page.locator('[data-date="2026-10-29"]')).toHaveAttribute("aria-label", /1 time blocks, personal/);
   await page.screenshot({ path: testInfo.outputPath("persisted-month.png"), fullPage: true, animations: "disabled" });
   await page.goto("/availability");
-  await expect(page.getByText("Real-user availability is not connected yet.")).toBeVisible();
-  await expect(page.locator('[data-testid^="person-"]')).toHaveCount(0);
+  await expect(page.getByText("Only people who choose to share appear here. Event details and email addresses stay private.")).toBeVisible();
+  await expect(page.getByTestId("person-jamie")).toHaveCount(0);
 });
 
 test("month agenda defaults recurring edits to one occurrence and preserves the series", async ({ page, context }) => {
@@ -170,12 +170,13 @@ test("timezone settings persist and both public preview and authenticated finder
   await login(page, context);
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Display name", { exact: true })).toHaveAttribute("readonly", "");
-  await expect(page.getByRole("switch", { name: "Share my availability" })).toBeDisabled();
+  await expect(page.getByRole("switch", { name: "Share my availability" })).toBeEnabled();
+  await expect(page.getByRole("switch", { name: "Share my availability" })).toHaveAttribute("aria-checked", "false");
   await page.getByLabel("Timezone", { exact: true }).selectOption("UTC"); await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByText("Timezone saved to your account.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Preferences saved to your account.", { exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByLabel("Timezone", { exact: true })).toHaveValue("UTC");
   await page.getByRole("link", { name: "Who’s free?", exact: true }).click();
-  await expect(page.getByText("Real-user availability is not connected yet.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Only people who choose to share appear here. Event details and email addresses stay private.", { exact: true })).toBeVisible();
   const before = await schedule(context); const mutations: string[] = [];
   page.on("request", (request) => { if (request.method() !== "GET" && request.url().includes("/api/v1/me/")) mutations.push(request.url()); });
   await page.goto("/preview/schedule"); await page.getByRole("button", { name: "Add time", exact: true }).click();

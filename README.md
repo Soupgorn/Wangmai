@@ -1,10 +1,11 @@
 # Wangmai (ว่างมั้ย?)
 
 Wangmai uses Next.js App Router, Hono, PostgreSQL, Drizzle ORM and Better Auth
-with Google OAuth, in npm Workspaces. Phase 4 adds private database-backed schedules,
-weekly recurrence, dated overrides and a persisted schedule timezone. The public
-preview and availability finder remain fictional demos, separate from saved schedules.
-See [Phase 4 implementation and verification](docs/phase-4.md).
+with Google OAuth, in npm Workspaces. Personal schedules support weekly recurrence,
+dated overrides, monthly editing and a persisted timezone. Phase 5 adds private-by-default
+availability sharing and a real authenticated multi-user finder. The public preview
+remains independent and fictional. See [Phase 5 implementation and verification](docs/phase-5.md)
+and the historical [Phase 4 report](docs/phase-4.md).
 
 ## Repository history
 
@@ -155,16 +156,20 @@ No production environment or deployment was assumed, accessed or started.
   Logout revokes the backend session and returns to Login; failures remain retryable.
 - Authenticated /schedule uses PostgreSQL for create, read, edit and delete, with
   recurrence and dated occurrence replacements/cancellations. It never loads fixtures.
-- Authenticated /settings persists only the schedule timezone. Google name/email are
-  read-only; availability sharing is disabled until its own phase.
-- Authenticated /availability remains a labelled fictional finder demo; it does not
-  read the saved calendar or other users' private schedules.
+- Authenticated /settings persists timezone and availability sharing, which defaults
+  to OFF. Google name/email remain read-only. Sharing is owner-only and revision-protected.
+- Authenticated /availability uses `GET /api/v1/availability` for opted-in Google-linked
+  users' status summaries. It never receives private blocks, titles, or email addresses.
+  The unified picker handles one day or an inclusive range of at most 31 days. Each date
+  evaluates the requested wall-time interval separately. Any/Every and Person/Date views
+  preserve Unknown as insufficient information. Requests are debounced, cancellable,
+  uncached, and revalidated on focus and every 30 seconds while visible.
 - /preview/schedule, /preview/availability and /preview/settings preserve the public
   Phase 2 demo, with isolated temporary state and no sign-in requirement.
 
 CoreRepository selects an explicit database or in-memory adapter. Public preview
 name/privacy/timezone changes never update Google or persisted account preferences.
-No multi-user availability backend, Admin, Calendar integration, notifications or analytics were added.
+No Admin, Calendar integration, notifications, group planning or analytics are included.
 See [Core MVP notes](frontend/docs/core-mvp.md) and
 [design system](frontend/docs/design-system.md) for the approved frontend baseline.
 
@@ -211,16 +216,18 @@ Before tests, configure the local root env, start PostgreSQL and apply migration
 Playwright uses dedicated localhost:3100 and backend:4100 and an isolated Next output
 directory so it does not reuse port 3000. It requires Chromium
 (`npm exec --workspace=@wangmai/frontend -- playwright install chromium`).
-Integration tests create and drop only random `wangmai_auth_test_*` / `wangmai_schedule_test_*` databases;
-the local PostgreSQL test role needs CREATEDB. Browser auth fixtures seed uniquely
-named synthetic users in the development database and delete them afterward.
+Integration tests create and drop only random `wangmai_auth_test_*`, `wangmai_schedule_test_*`,
+and `wangmai_availability_test_*` databases; the local PostgreSQL test role needs CREATEDB.
+The browser-test command also creates, migrates and removes an isolated `wangmai_browser_test_*`
+database. Synthetic regression profiles never appear in the normal port-3000 app.
 They use actual Better Auth sessions with signed cookies. The Google button error
 test intercepts the error response; it never claims to authenticate with Google.
 
 See the historical [Phase 3 verification](docs/phase-3.md) and current
 [Phase 4 verification](docs/phase-4.md). Live Google OAuth was manually confirmed by
 the project owner in Phase 3. Production Caddy/HTTPS and deployment remain unverified.
-Phase 5 multi-user availability and deployment work remain outside this change.
+See [Phase 5](docs/phase-5.md) for current multi-user verification and manual acceptance.
+Deployment work remains outside scope.
 
 ## Local Phase 3 acceptance update - 2026-10-29
 
