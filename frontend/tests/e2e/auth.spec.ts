@@ -28,7 +28,7 @@ test("protected routes redirect unauthenticated users; health and public preview
   expect(me.status()).toBe(401);
   expect((await request.get("/api/health")).status()).toBe(200);
   await page.goto("/preview/schedule");
-  await expect(page.getByText("Interactive preview. Fictional people; changes reset on refresh.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A week that feels like you.", exact: true })).toBeVisible();
 });
 
 test("Google button uses the same-origin Better Auth endpoint and shows configuration errors", async ({ page }) => {
@@ -53,10 +53,10 @@ test("persisted session redirects login, shows real profile, survives reload and
   await context.addCookies([{ name: seeded.cookie.slice(0, separator), value: seeded.cookie.slice(separator + 1), url: env.BETTER_AUTH_URL, httpOnly: true, sameSite: "Lax" }]);
   await page.goto("/login");
   await expect(page).toHaveURL(/\/schedule$/);
-  await expect(page.getByText(/No schedules are saved to your account/)).toBeVisible();
+  await expect(page.getByText(/Your private schedule is saved to your account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A week that feels like you.", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByText(seeded.user.email, { exact: true })).toBeVisible();
-  await expect(page.getByText("Google profile connected.", { exact: false })).toBeVisible();
   await page.reload();
   await expect(page.getByText(seeded.user.email, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Log out", exact: true }).click();

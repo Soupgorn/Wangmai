@@ -13,6 +13,6 @@ export default defineConfig({
   // Dedicated ports avoid reusing an unrelated development process.
   webServer: [
     { command: "npm run dev --workspace=@wangmai/backend --prefix ..", url: "http://127.0.0.1:4100/api/health", env: { PORT: "4100", BETTER_AUTH_URL: "http://localhost:3100" }, reuseExistingServer: false, timeout: 60_000 },
-    { command: "npm exec -- next dev --hostname 127.0.0.1 --port 3100", url: "http://localhost:3100", env: { NEXT_DIST_DIR: ".next-e2e", API_PROXY_ORIGIN: "http://127.0.0.1:4100", API_INTERNAL_ORIGIN: "http://127.0.0.1:4100" }, reuseExistingServer: false, timeout: 60_000 },
+    { command: "npm exec -- next dev --hostname 127.0.0.1 --port 3100", url: "http://localhost:3100", env: { PORT: "3100", NEXT_DIST_DIR: ".next-e2e", API_PROXY_ORIGIN: "http://127.0.0.1:4100", API_INTERNAL_ORIGIN: "http://127.0.0.1:4100" }, reuseExistingServer: false, timeout: 60_000 },
   ],
 });

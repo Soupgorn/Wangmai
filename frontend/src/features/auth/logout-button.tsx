@@ -19,5 +19,5 @@ export function LogoutButton() {
       router.refresh();
     } catch { setError("Couldn’t sign out. Please try again."); setPending(false); }
   }
-  return <><Button variant="ghost" className="-ml-3" disabled={pending} onClick={() => void logout()}><LogOut aria-hidden="true" />{pending ? "Signing out…" : "Log out"}</Button>{error && <p role="alert" className="mt-2 text-xs">{error}</p>}</>;
+  return <><Button variant="outline" size="lg" className="cursor-pointer" disabled={pending} onClick={() => void logout()}><LogOut aria-hidden="true" />{pending ? "Signing out…" : "Log out"}</Button>{error && <p role="alert" className="mt-2 text-xs">{error}</p>}</>;
 }

@@ -12,13 +12,13 @@ function PolicyNotice({ kind, short = false }: { kind: "privacy" | "terms"; shor
   const label = short ? (kind === "privacy" ? "Privacy" : "Terms") : title;
   return (
     <>
-      <button type="button" onClick={() => dialog.current?.showModal()} className="rounded-xs underline decoration-border underline-offset-4 hover:text-foreground">{label}</button>
-      <dialog ref={dialog} aria-labelledby={titleId} className="m-auto w-[calc(100%-3rem)] max-w-sm rounded-xl border bg-card p-6 text-left text-foreground shadow-card backdrop:bg-foreground/20">
+      <button type="button" onClick={() => dialog.current?.showModal()} className="inline-flex min-h-11 items-center rounded-xs underline decoration-border underline-offset-4 transition-colors hover:text-foreground">{label}</button>
+      <dialog ref={dialog} aria-labelledby={titleId} className="m-auto max-h-[calc(100svh-2rem)] w-[calc(100%-3rem)] max-w-sm overflow-y-auto rounded-xl border bg-card p-6 text-left text-foreground shadow-card backdrop:bg-foreground/20">
         <div className="mb-4 flex items-start justify-between gap-5">
           <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
           <Button variant="ghost" size="icon" className="-mt-2 -mr-2" aria-label={`Close ${title.toLowerCase()}`} onClick={() => dialog.current?.close()}><X aria-hidden="true" /></Button>
         </div>
-        <p className="text-sm leading-relaxed text-muted-foreground">Our {title.toLowerCase()} will be available before sign-in opens. You can explore the public pages without creating an account.</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">The {title.toLowerCase()} has not been published yet. You can explore the interactive preview without creating an account.</p>
         <Button variant="outline" className="mt-6" onClick={() => dialog.current?.close()}>Back to Wangmai</Button>
       </dialog>
     </>

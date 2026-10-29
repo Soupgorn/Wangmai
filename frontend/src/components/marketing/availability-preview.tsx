@@ -30,7 +30,7 @@ export function AvailabilityPreview({ compact = false }: { compact?: boolean }) 
   }
 
   return (
-    <figure className={styles.heroPreview} aria-label="Example Wangmai availability preview, using fictional people">
+    <figure className={`${styles.heroPreview} motion-hero-preview`} aria-label="Example Wangmai availability preview, using fictional people">
       <Card className={styles.previewCard}>
         <CardHeader className={styles.previewHeader}>
           <h2 lang="th">ว่างมั้ย?</h2>
@@ -52,7 +52,7 @@ export function AvailabilityPreview({ compact = false }: { compact?: boolean }) 
           </ul>
         </CardContent>
       </Card>
-      <figcaption className={styles.previewCaption}>Same free time. A new plan waiting to happen.</figcaption>
+      <figcaption className={styles.previewCaption}>An illustrative preview with fictional people.</figcaption>
     </figure>
   );
 }

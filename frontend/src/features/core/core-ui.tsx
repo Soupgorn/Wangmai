@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { addDays, addMonths, dateValue, formatDate, monthDates, WEEKDAYS } from "./time";
 import type { AvailabilityState } from "./types";
 import styles from "./core.module.css";
+import { blockLabels } from "./block-labels";
 
 export function Field({ label, children, className = "" }: { label: string; children: ReactElement<{ "aria-labelledby"?: string }>; className?: string | undefined }) {
   const labelId = useId();
@@ -14,7 +15,7 @@ export function Field({ label, children, className = "" }: { label: string; chil
 
 export function StatusTag({ state }: { state: AvailabilityState }) {
   const Icon = state === "available" ? Check : state === "busy" ? Clock3 : CircleHelp;
-  return <span className={styles.status} data-state={state}><Icon aria-hidden="true" />{state === "available" ? "Available" : state === "busy" ? "Busy" : "Unknown"}</span>;
+  return <span className={styles.status} data-state={state}><Icon aria-hidden="true" />{state === "unknown" ? "Unknown" : blockLabels[state]}</span>;
 }
 
 export function DatePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {

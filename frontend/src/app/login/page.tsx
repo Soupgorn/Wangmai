@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className={styles.mobileBrand}><Brand /></div>
       <aside className={styles.loginIntro} aria-labelledby="login-introduction">
         <Brand />
-        <div className={styles.loginStory}>
+        <div className={`${styles.loginStory} motion-login`}>
           <h2 id="login-introduction">Good plans start<br />with free time.</h2>
           <p>See who’s free and find a little room<br />for the people you like.</p>
           <AvailabilityPreview compact />
@@ -30,13 +30,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <p className={styles.introCaption}><span lang="th">ว่างมั้ย?</span> &nbsp; Make a little time together.</p>
       </aside>
       <section className={styles.loginContent} aria-labelledby="login-title">
-        <div className={styles.loginForm}>
+        <div className={`${styles.loginForm} motion-login`}>
           <div className={styles.loginIcon}><CalendarHeart aria-hidden="true" /></div>
           <h1 id="login-title">Welcome to Wangmai.</h1>
           <p className={styles.loginDescription}>Your people. A little free time.<br />Let’s find a moment that works.</p>
           <LoginActions callbackError={Boolean(error)} />
           <Button asChild variant="outline" className="mt-4 w-full"><Link href="/preview/schedule">Explore the interactive preview</Link></Button>
-          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Fictional data. No sign-in or server saves.</p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Fictional data. No sign-in or server saves.</p>
           <div className={styles.loginLegal}>By continuing, you agree to our<br /><PolicyLinks /></div>
           <p className={styles.loginPrivacy}><ShieldCheck aria-hidden="true" /><span>Your schedule stays private until<br />you choose to share your availability.</span></p>
         </div>

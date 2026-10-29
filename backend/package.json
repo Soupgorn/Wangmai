@@ -13,7 +13,7 @@
     "db:migrate": "tsx --env-file-if-exists=../.env src/db/migrate.ts",
     "db:check": "tsx --env-file-if-exists=../.env src/db/check.ts",
     "test": "tsx --test tests/unit.test.ts",
-    "test:integration": "tsx --env-file-if-exists=../.env --test tests/auth.integration.test.ts"
+    "test:integration": "tsx --env-file-if-exists=../.env --test tests/*.integration.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.5",

@@ -1,0 +1,48 @@
+/* Content is visible by default. Motion changes no data or layout measurements. */
+:root {
+  --motion-micro:160ms; --motion-state:240ms; --motion-dialog:240ms;
+  --motion-exit:160ms; --motion-block:320ms; --motion-page:380ms;
+  --motion-section:460ms; --motion-hero:580ms; --motion-stagger:80ms;
+  --motion-distance:14px; --motion-ease:cubic-bezier(.16,1,.3,1);
+}
+@keyframes wm-rise { from { opacity:0; transform:translateY(var(--motion-distance)); } to { opacity:1; transform:none; } }
+@keyframes wm-page { from { opacity:.4; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes wm-dialog-in { from { opacity:0; transform:translateY(12px) scale(.97); } to { opacity:1; transform:none; } }
+@keyframes wm-dialog-out { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(6px) scale(.98); } }
+@keyframes wm-dim-in { from { opacity:0; } to { opacity:1; } }
+@keyframes wm-dim-out { from { opacity:1; } to { opacity:0; } }
+@keyframes wm-feedback { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+@keyframes wm-spin { to { transform:rotate(360deg); } }
+.motion-hero-title,.motion-hero-description,.motion-hero-actions,.motion-hero-preview,.motion-login { animation:wm-rise var(--motion-hero) var(--motion-ease) backwards; }
+.motion-hero-description { animation-delay:var(--motion-stagger); }
+.motion-hero-actions { animation-delay:calc(var(--motion-stagger) * 2); }
+.motion-hero-preview { animation-delay:calc(var(--motion-stagger) * 3); }
+.motion-login { animation-duration:var(--motion-section); }
+.motion-page { animation:wm-page var(--motion-page) var(--motion-ease) backwards; }
+.motion-week { animation:wm-page var(--motion-state) var(--motion-ease) backwards; }
+.motion-feedback { display:inline-flex; align-items:center; gap:8px; animation:wm-feedback var(--motion-state) var(--motion-ease); }
+.motion-error { animation:wm-feedback var(--motion-state) var(--motion-ease); }
+.motion-spinner { animation:wm-spin 850ms linear infinite; }
+.motion-dialog[data-state=open] { animation:wm-dialog-in var(--motion-dialog) var(--motion-ease); }
+.motion-dialog[data-state=closed] { animation:wm-dialog-out var(--motion-exit) ease-in; pointer-events:none; }
+.motion-overlay[data-state=open] { animation:wm-dim-in var(--motion-dialog) ease-out; }
+.motion-overlay[data-state=closed] { animation:wm-dim-out var(--motion-exit) ease-in; }
+[data-slot=button] { transition:transform var(--motion-micro) var(--motion-ease),box-shadow var(--motion-micro),background-color var(--motion-micro),color var(--motion-micro); }
+[data-slot=button]:not(:disabled):active { transform:scale(.97); }
+@media (hover:hover) {
+  [data-slot=button]:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 5px 12px color-mix(in srgb,var(--foreground) 12%,transparent); }
+  [data-slot=button]:not(:disabled):active { transform:translateY(0) scale(.97); }
+}
+.motion-nav { position:relative; isolation:isolate; }
+.motion-nav>a { position:relative; z-index:1; transition:color var(--motion-micro),background-color var(--motion-micro); }
+.motion-nav>a svg { transition:transform var(--motion-micro) var(--motion-ease); }
+.motion-nav>a:hover svg { transform:translateY(-2px); }
+.motion-nav-indicator { position:absolute; z-index:0; pointer-events:none; border-radius:var(--radius-control); background:var(--sidebar-accent); transform-origin:top left; }
+.motion-nav[data-ready=true]>a[aria-current=page] { background:transparent; }
+.motion-nav-collapse { display:grid; grid-template-rows:1fr; opacity:1; transition:grid-template-rows var(--motion-state) var(--motion-ease),opacity var(--motion-state); }
+.motion-nav-collapse[data-open=false] { grid-template-rows:0fr; opacity:0; }
+.motion-nav-inner { overflow:hidden; min-height:0; padding:4px; margin:-4px; }
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none !important; transition-property:color,background-color,border-color,box-shadow !important; transition-duration:100ms !important; scroll-behavior:auto !important; }
+  [data-slot=button],.motion-nav>a svg { transform:none !important; }
+}
