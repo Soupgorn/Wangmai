@@ -19,8 +19,8 @@ export function availabilityWindow(query: AvailabilityWindowQuery) {
   return { start: scheduleInstant(query.date, query.start, query.timezone), end: scheduleInstant(query.date, query.end, query.timezone) };
 }
 
-/** Shared by the persisted finder and the isolated preview. Missing coverage is Unknown.
- * Busy conflicts win; recurring exceptions remove only the specified occurrence.
+/** Opted-in profiles are available unless a Busy block overlaps the query.
+ * Legacy Available markers have no effect; unsafe Busy occurrences stay Unknown.
  */
 export function classifyScheduleAvailability(person: { id: string; timezone: string; shareAvailability: boolean }, blocks: readonly AvailabilityBlock[], query: AvailabilityWindowQuery): { state: AvailabilityState; explanation: string } {
   const window = availabilityWindow(query);
@@ -32,21 +32,14 @@ export function classifyScheduleAvailability(person: { id: string; timezone: str
   for (let day = firstDate; Temporal.PlainDate.compare(day, lastDate) <= 0; day = day.add({ days: 1 })) {
     const date = day.toString();
     for (const block of blocks) {
-      if (block.ownerId !== person.id || block.excludedDates?.includes(date) || (block.timing.type === "date" ? block.timing.date !== date : block.timing.weekday !== day.dayOfWeek)) continue;
+      if (block.kind !== "busy" || block.ownerId !== person.id || block.excludedDates?.includes(date) || (block.timing.type === "date" ? block.timing.date !== date : block.timing.weekday !== day.dayOfWeek)) continue;
       try { intervals.push({ start: scheduleInstant(date, block.start, person.timezone), end: scheduleInstant(date, block.end, person.timezone), kind: block.kind }); }
       catch { uncertain = true; }
     }
   }
   if (intervals.some((block) => block.kind === "busy" && block.start < window.end && block.end > window.start)) return { state: "busy", explanation: "Unavailable during this time." };
   if (uncertain) return { state: "unknown", explanation: "A daylight-saving transition makes this availability uncertain." };
-  let coveredUntil = window.start;
-  for (const block of intervals.filter((value) => value.kind === "available").sort((a, b) => a.start - b.start)) {
-    if (block.end <= coveredUntil) continue;
-    if (block.start > coveredUntil) break;
-    coveredUntil = block.end;
-    if (coveredUntil >= window.end) return { state: "available", explanation: "Free for the whole selected time." };
-  }
-  return { state: "unknown", explanation: "No shared availability for the full time range." };
+  return { state: "available", explanation: "No unavailable block overlaps this time." };
 }
 
 export function googleProfileImage(value: string | null | undefined): string | null {

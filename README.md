@@ -15,6 +15,12 @@ The production domain target is `https://wangmai.snowballwy.com`; use the
 [domain cutover checklist](docs/production-domain-cutover.md) to prepare DNS,
 NaCl HTTPS/routing and Google OAuth before changing a running environment.
 
+Availability is now Busy-only: people who opt in are available unless an unavailable
+block overlaps the search interval. Record only unavailable time. Sharing stays off
+by default; private and non-Google profiles and the viewer remain excluded. Existing
+Available markers are retained for compatibility and ignored by the finder. See the
+[Busy-only model](docs/busy-only-availability.md) for recurrence and rollout details.
+
 ## Repository history
 
 The clean branch `feat/auth-database` initially pointed to Phase 1 commit

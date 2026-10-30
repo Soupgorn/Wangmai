@@ -13,10 +13,11 @@ function block(id: string, start: string, end: string, kind: "available" | "busy
   return { id, ownerId: "me", title: id, kind, start, end, timing: { type: "weekly", weekday: 1 } };
 }
 
-test("availability must cover the entire query, including joined adjacent blocks", () => {
-  assert.equal(classifyAvailability(person, [block("partial", "10:00", "10:30")], query).state, "unknown");
+test("shared gaps are available and legacy Available markers do not constrain the query", () => {
+  assert.equal(classifyAvailability(person, [], query).state, "available");
+  assert.equal(classifyAvailability(person, [block("partial", "10:00", "10:30")], query).state, "available");
   assert.equal(classifyAvailability(person, [block("one", "09:00", "10:30"), block("two", "10:30", "12:00")], query).state, "available");
-  assert.equal(classifyAvailability(person, [block("one", "09:00", "10:29"), block("two", "10:30", "12:00")], query).state, "unknown");
+  assert.equal(classifyAvailability(person, [block("one", "09:00", "10:29"), block("two", "10:30", "12:00")], query).state, "available");
 });
 
 test("busy takes precedence and intervals are half-open at their boundaries", () => {
@@ -25,10 +26,10 @@ test("busy takes precedence and intervals are half-open at their boundaries", ()
   assert.equal(classifyAvailability(person, [free, block("before", "09:00", "10:00", "busy"), block("after", "11:00", "12:00", "busy")], query).state, "available");
 });
 
-test("private and unspecified availability remains unknown", () => {
+test("private profiles remain unknown while shared empty schedules are available", () => {
   assert.equal(classifyAvailability({ ...person, shareAvailability: false }, [block("private", "09:00", "17:00", "busy")], query).state, "unknown");
-  assert.equal(classifyAvailability(person, [], query).state, "unknown");
-  assert.equal(classifyAvailability(person, [{ ...block("other", "09:00", "17:00"), ownerId: "another-person" }], query).state, "unknown");
+  assert.equal(classifyAvailability(person, [], query).state, "available");
+  assert.equal(classifyAvailability(person, [{ ...block("other", "09:00", "17:00", "busy"), ownerId: "another-person" }], query).state, "available");
 });
 
 test("a date-specific busy exception affects only that date", () => {
@@ -40,9 +41,9 @@ test("a date-specific busy exception affects only that date", () => {
 
 test("queries are converted across timezones and date boundaries", () => {
   const tokyo: Person = { ...person, timezone: "Asia/Tokyo" };
-  assert.equal(classifyAvailability(tokyo, [block("Tokyo lunch", "12:00", "13:00")], query).state, "available");
-  const mondayTokyo = block("Early Monday", "01:00", "02:00");
-  assert.equal(classifyAvailability(tokyo, [mondayTokyo], { date: "2026-11-01", start: "16:00", end: "17:00", timezone: "UTC" }).state, "available");
+  assert.equal(classifyAvailability(tokyo, [block("Tokyo lunch", "12:00", "13:00", "busy")], query).state, "busy");
+  const mondayTokyo = block("Early Monday", "01:00", "02:00", "busy");
+  assert.equal(classifyAvailability(tokyo, [mondayTokyo], { date: "2026-11-01", start: "16:00", end: "17:00", timezone: "UTC" }).state, "busy");
 });
 
 test("invalid ranges, nonexistent dates and ambiguous DST inputs are rejected", () => {
@@ -58,6 +59,14 @@ test("an ambiguous recurring busy period cannot incorrectly yield available", ()
   const free = { ...block("free", "00:00", "04:00"), timing: { type: "weekly" as const, weekday: 7 } };
   const busy = { ...block("ambiguous", "01:15", "01:45", "busy"), timing: { type: "weekly" as const, weekday: 7 } };
   assert.equal(classifyAvailability(ny, [free, busy], { date: "2026-11-01", start: "05:00", end: "07:00", timezone: "UTC" }).state, "unknown");
+});
+
+test("an ambiguous legacy Available marker is ignored without changing stored blocks", () => {
+  const ny = { ...person, timezone: "America/New_York" };
+  const legacy = { ...block("legacy", "01:15", "01:45"), timing: { type: "weekly" as const, weekday: 7 } };
+  const before = structuredClone(legacy);
+  assert.equal(classifyAvailability(ny, [legacy], { date: "2026-11-01", start: "05:00", end: "07:00", timezone: "UTC" }).state, "available");
+  assert.deepEqual(legacy, before);
 });
 
 test("week navigation crosses month and year boundaries", () => {

@@ -63,9 +63,10 @@ test("private-by-default multi-user availability", { timeout: 60_000 }, async (t
         await share(actor, true, actor === tokyo ? "Asia/Tokyo" : "Asia/Bangkok");
         for (let weekday = 1; weekday <= 7; weekday++) {
           const saved = await create(actor, draft({ type: "weekly", weekday }, "available", actor === tokyo ? "15:00" : "13:00", actor === tokyo ? "19:00" : "17:00"));
-          if (weekday === 5) friday.set(actor.user.id, saved.id);
+          assert.equal(saved.kind, "available"); // Retained legacy markers are ignored.
         }
       }
+      friday.set(a.user.id, (await create(a, draft({ type: "weekly", weekday: 5 }, "busy"))).id);
       await share(unknown, true); await share(viewer, true); await share(notGoogle, true);
       await db.update(account).set({ providerId: "credential" }).where(eq(account.userId, notGoogle.user.id));
       await db.update(user).set({ name: "Alex Shared", image: "https://lh3.googleusercontent.com/a/test-photo" }).where(eq(user.id, a.user.id));
@@ -76,9 +77,9 @@ test("private-by-default multi-user availability", { timeout: 60_000 }, async (t
       assert.equal(found.people.length, 4);
       assert.equal(state(found, "2027-01-01", beam.user.id), "busy");
       assert.equal(state(found, "2026-12-31", tokyo.user.id), "available");
-      assert.equal(state(found, "2027-01-02", unknown.user.id), "unknown");
+      assert.equal(state(found, "2027-01-02", unknown.user.id), "available");
       assert.deepEqual(found.people.find((person) => person.id === beam.user.id)?.availableDates, ["2026-12-31", "2027-01-02"]);
-      assert.deepEqual(found.counts, { anyDay: 3, everyDay: 2 });
+      assert.deepEqual(found.counts, { anyDay: 4, everyDay: 2 });
       assert.equal(found.people.find((person) => person.id === beam.user.id)?.image, null);
       assert.equal(found.people.find((person) => person.id === a.user.id)?.image, "https://lh3.googleusercontent.com/a/test-photo");
     });
@@ -88,33 +89,35 @@ test("private-by-default multi-user availability", { timeout: 60_000 }, async (t
       assert.ok(found.days.every((day) => day.results.length === found.people.length));
       assert.deepEqual(Object.keys(found.people[0]!).sort(), ["availableDates", "displayName", "id", "image"]);
     });
-    await t.test("one-day queries and every-day aggregates use confirmed coverage, never missing data", async () => {
+    await t.test("shared empty schedules and gaps are available without Available markers", async () => {
       const found = await result({ endDate: query.startDate });
       assert.equal(found.days.length, 1); assert.equal(found.counts.anyDay, found.counts.everyDay);
-      assert.equal(state(await result({ startTime: "17:00", endTime: "18:00" }), query.startDate, a.user.id), "unknown");
+      assert.equal(state(await result({ startTime: "17:00", endTime: "18:00" }), query.startDate, a.user.id), "available");
+      assert.equal((await read(unknown)).blocks.length, 0);
+      assert.equal(state(found, query.startDate, unknown.user.id), "available");
     });
     await t.test("cancelled, replaced and restored occurrences affect only one date", async () => {
       const id = friday.get(a.user.id)!; const path = `/schedule/entries/${id}/exceptions/2027-01-01`;
       assert.equal((await write(a, path, "PUT", { replacement: null })).status, 200);
-      assert.equal(state(await result(), "2027-01-01", a.user.id), "unknown");
+      assert.equal(state(await result(), "2027-01-01", a.user.id), "available");
       assert.equal(state(await result(), "2026-12-31", a.user.id), "available");
       assert.equal((await write(a, path, "PUT", { replacement: draft({ type: "date", date: "2027-01-01" }, "busy") })).status, 200);
       assert.equal(state(await result(), "2027-01-01", a.user.id), "busy");
       assert.equal((await write(a, path, "DELETE")).status, 200);
-      assert.equal(state(await result(), "2027-01-01", a.user.id), "available");
+      assert.equal(state(await result(), "2027-01-01", a.user.id), "busy");
     });
     await t.test("half-open overlaps, additive dated availability and independent daily intervals are preserved", async () => {
       await create(a, draft({ type: "date", date: "2026-12-31" }, "busy", "12:00", "13:00"));
       await create(a, draft({ type: "date", date: "2026-12-31" }, "busy", "15:00", "16:00"));
       await create(a, draft({ type: "date", date: "2027-01-01" }, "busy", "18:00", "19:00"));
-      assert.equal((await result()).people.find((person) => person.id === a.user.id)?.availableDates.length, 3);
+      assert.equal((await result()).people.find((person) => person.id === a.user.id)?.availableDates.length, 2);
       await create(unknown, draft({ type: "date", date: "2027-01-02" }));
-      assert.deepEqual((await result()).people.find((person) => person.id === unknown.user.id)?.availableDates, ["2027-01-02"]);
+      assert.deepEqual((await result()).people.find((person) => person.id === unknown.user.id)?.availableDates, ["2026-12-31", "2027-01-01", "2027-01-02"]);
       assert.equal(state(await result({ startTime: "14:30", endTime: "15:30" }), "2026-12-31", a.user.id), "busy");
     });
     await t.test("cross-month, timezone date boundaries and DST ambiguities never produce invented availability", async () => {
-      await create(tokyo, draft({ type: "date", date: "2027-01-03" }, "available", "01:00", "02:00"));
-      assert.equal(state(await result({ startDate: "2027-01-02", endDate: "2027-01-02", startTime: "16:00", endTime: "17:00", timezone: "UTC" }), "2027-01-02", tokyo.user.id), "available");
+      await create(tokyo, draft({ type: "date", date: "2027-01-03" }, "busy", "01:00", "02:00"));
+      assert.equal(state(await result({ startDate: "2027-01-02", endDate: "2027-01-02", startTime: "16:00", endTime: "17:00", timezone: "UTC" }), "2027-01-02", tokyo.user.id), "busy");
       await share(unknown, true, "America/New_York");
       await create(unknown, draft({ type: "weekly", weekday: 7 }, "available", "00:00", "04:00"));
       await create(unknown, draft({ type: "weekly", weekday: 7 }, "busy", "01:15", "01:45"));

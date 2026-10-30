@@ -27,7 +27,7 @@ test("each day evaluates its own interval; every-day intersection excludes unkno
   const result = evaluateRange(snapshot, { startDate: "2026-12-31", endDate: "2027-01-01", start: "13:00", end: "15:00", timezone: profile.timezone });
   assert.deepEqual(result.days.map((day) => day.results.map((person) => person.state)), [["available", "available", "unknown"], ["available", "busy", "unknown"]]);
   assert.deepEqual(result.everyDay.map((person) => person.person.id), ["a"]);
-  snapshot.blocks = []; assert.equal(evaluateRange(snapshot, { startDate: "2026-12-31", endDate: "2027-01-01", start: "13:00", end: "15:00", timezone: profile.timezone }).everyDay.length, 0);
+  snapshot.blocks = []; assert.equal(evaluateRange(snapshot, { startDate: "2026-12-31", endDate: "2027-01-01", start: "13:00", end: "15:00", timezone: profile.timezone }).everyDay.length, 2);
 });
 test("DST gap and repeated query times fail instead of producing availability", () => {
   const snapshot: CoreSnapshot = { today: "2026-03-08", profile, people: [], blocks: [] };

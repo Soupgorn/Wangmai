@@ -10,7 +10,7 @@ import styles from "@/components/marketing/public-pages.module.css";
 import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 const features = [
-  { icon: CalendarPlus, title: "Make a little space.", description: "Add your free time to a simple weekly calendar. A few clicks and you’re done." },
+  { icon: CalendarPlus, title: "Make a little space.", description: "Mark the times you’re unavailable. When you share, the rest is available." },
   { icon: UsersRound, title: "Find your people.", description: "Pick a moment. See who’s free, without the group chat back-and-forth." },
   { icon: LockKeyhole, title: "Keep your plans yours.", description: "Share when you’re available. The details of your day stay private." },
 ] as const;
