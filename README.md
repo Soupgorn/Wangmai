@@ -9,7 +9,7 @@ and the historical [Phase 4 report](docs/phase-4.md).
 
 For manual production preparation, use the [CloudStack deployment runbook](docs/cloudstack-deployment.md)
 and the separate [.env.production.example](.env.production.example). Production Compose
-requires an explicit release image tag and domain. Do not use the local `.env` or
+uses `provider-proxy-next`: only Next publishes `10.60.2.22:3000`; Hono and PostgreSQL remain internal. It requires reviewed release images, gateway source/header evidence, and encryption/integrity protection for the HTTP hop. Do not use the local `.env` or
 development volume for deployment. Phase 6A prepares and verifies locally; it does not deploy.
 
 ## Repository history
@@ -70,7 +70,7 @@ Existing environment variables take precedence over env-file values.
 | GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET | Both empty locally or both valid Google Web application credentials; required in production |
 | API_PROXY_ORIGIN | Optional Next development rewrite target; defaults to http://127.0.0.1:4000 |
 | API_INTERNAL_ORIGIN | Optional Next server-rendering Hono origin; defaults to http://127.0.0.1:4000; production Compose supplies http://backend:4000 |
-| WANGMAI_DOMAIN | Production Caddy DNS hostname; placeholder is not a deployment |
+| WANGMAI_DOMAIN | Public HTTPS hostname, preserved at the provider gateway |
 | NEXT_DIST_DIR | Optional isolated Next build directory used by browser tests |
 
 Do not prefix secrets with NEXT_PUBLIC_. Env files are excluded from Git and Docker
@@ -144,7 +144,7 @@ credentials or tokens. `/api/v1/me` ignores client-supplied IDs and returns no s
 token or provider token.
 
 Browser requests use the same public origin. Development Next rewrites preserve
-`/api`; production Caddy sends `/api/*` directly to Hono. Caddy routing is unchanged.
+`/api`; production Next rewrites `/api` and `/api/*` to internal Hono at build time. The provider gateway terminates public HTTPS.
 Production Compose now passes auth variables to Hono and the internal backend
 origin to Next. The backend Dockerfile includes migration artifacts, allowing a
 manually authorized operator to use the separate one-shot migrator. See the
@@ -232,7 +232,7 @@ test intercepts the error response; it never claims to authenticate with Google.
 
 See the historical [Phase 3 verification](docs/phase-3.md) and current
 [Phase 4 verification](docs/phase-4.md). Live Google OAuth was manually confirmed by
-the project owner in Phase 3. Production Caddy/HTTPS and deployment remain unverified.
+the project owner in Phase 3. Production gateway security and deployment remain unverified.
 See [Phase 5](docs/phase-5.md) for current multi-user verification and manual acceptance.
 Deployment work remains outside scope.
 
@@ -246,5 +246,5 @@ the automated browser tests use database-backed test sessions separately.
 
 This update supersedes the earlier implementation-time statements that Google
 credentials and live acceptance were pending. Local Phase 3 acceptance is complete.
-Production domain setup, Caddy HTTPS operation and deployment remain unverified.
+Production gateway protection, real-account acceptance and deployment remain unverified.
 At that acceptance stage, Phase 4 business APIs and persistence were not yet implemented.

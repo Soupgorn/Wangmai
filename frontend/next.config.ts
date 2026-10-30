@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   turbopack: { root: workspaceRoot },
   poweredByHeader: false,
+  skipTrailingSlashRedirect: true,
   async redirects() {
     if (process.env.NODE_ENV !== "development") return [];
     const origin = `http://localhost:${process.env.PORT ?? "3000"}`;
@@ -20,10 +21,15 @@ const nextConfig: NextConfig = {
     }));
   },
   async rewrites() {
-    // Production /api traffic goes directly from Caddy to Hono.
-    if (process.env.NODE_ENV !== "development") return [];
-    const origin = process.env.API_PROXY_ORIGIN ?? "http://127.0.0.1:4000";
-    return [{ source: "/api/:path*", destination: `${origin}/api/:path*` }];
+    // Rewrites are serialized into standalone output at BUILD time. Runtime env
+    // changes cannot repair a release built with a localhost API target.
+    const origin = process.env.NODE_ENV === "development"
+      ? process.env.API_PROXY_ORIGIN ?? "http://127.0.0.1:4000"
+      : "http://backend:4000";
+    return [
+      { source: "/api", destination: `${origin}/api` },
+      { source: "/api/:path*", destination: `${origin}/api/:path*` },
+    ];
   },
 };
 

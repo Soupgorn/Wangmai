@@ -1,3 +1,5 @@
+# HISTORICAL rollback only: compose.yaml + compose.caddy-rollback.yaml + this file.
+# Use previous approved application images; active production uses provider-proxy-next.
 # HTTP origin only. BLOCKED until the gateway security contract is verified.
 # Compose >=2.24.4: replace ports; never inherit public TLS listeners.
 services:

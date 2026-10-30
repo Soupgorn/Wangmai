@@ -1,3 +1,5 @@
+# HISTORICAL rollback only: compose.yaml + compose.caddy-rollback.yaml + this file.
+# Use previous approved application images; active production uses provider-proxy-next.
 # Explicit public Caddy TLS mode. Combine with compose.yaml, never shared-gateway.
 services:
   caddy:

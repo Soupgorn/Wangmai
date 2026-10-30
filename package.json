@@ -22,7 +22,7 @@
     "db:generate": "npm run db:generate --workspace=@wangmai/backend",
     "db:migrate": "npm run db:migrate --workspace=@wangmai/backend",
     "db:check": "npm run db:check --workspace=@wangmai/backend",
-    "test": "npm run test --workspace=@wangmai/backend && npm run test:unit --workspace=@wangmai/frontend",
+    "test": "node --test infra/next-ingress/guard.test.cjs && npm run test --workspace=@wangmai/backend && npm run test:unit --workspace=@wangmai/frontend",
     "test:integration": "npm run test:integration --workspace=@wangmai/backend"
   },
   "devDependencies": {

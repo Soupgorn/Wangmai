@@ -1,0 +1,20 @@
+# The only active production ingress. No Caddy container or host TLS listeners.
+services:
+  frontend:
+    environment:
+      WANGMAI_INGRESS_MODE: ${WANGMAI_INGRESS_MODE:?Explicitly select provider-proxy-next}
+      WANGMAI_DOMAIN: ${WANGMAI_DOMAIN:?Set the public hostname}
+      WANGMAI_PROVIDER_PROXY_NEXT_CONFIG: selected
+      WANGMAI_ORIGIN_BIND_IP: ${WANGMAI_ORIGIN_BIND_IP:?Set the reviewed private VM interface}
+      WANGMAI_GATEWAY_CIDRS: ${WANGMAI_GATEWAY_CIDRS:?Set administrator-verified TCP peer CIDRs}
+      WANGMAI_GATEWAY_HEADERS_VERIFIED: ${WANGMAI_GATEWAY_HEADERS_VERIFIED:?Header sanitation evidence required}
+      WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED: ${WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED:?Source restriction evidence required}
+      WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED: ${WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED:?HTTP hop confidentiality evidence required}
+      WANGMAI_ORIGIN_INTEGRITY_VERIFIED: ${WANGMAI_ORIGIN_INTEGRITY_VERIFIED:?HTTP hop integrity evidence required}
+      WANGMAI_ORIGIN_LINK_PROTECTION: ${WANGMAI_ORIGIN_LINK_PROTECTION:?Set the verified protected transport}
+      WANGMAI_GATEWAY_CONTRACT_REFERENCE: ${WANGMAI_GATEWAY_CONTRACT_REFERENCE:?Record reviewed security evidence}
+    ports: !override
+      - "${WANGMAI_ORIGIN_BIND_IP:?Set the reviewed private VM interface}:3000:3000"
+  backend:
+    environment:
+      AUTH_CLIENT_IP_HEADER: x-wangmai-client-ip

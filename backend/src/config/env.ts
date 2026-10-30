@@ -12,6 +12,7 @@ export const envSchema = z.object({
   POSTGRES_DB: z.string().min(1).default("wangmai"),
   POSTGRES_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
   DATABASE_URL: z.string().url(),
+  AUTH_CLIENT_IP_HEADER: z.literal("x-wangmai-client-ip").optional(),
   DATABASE_RUNTIME_ROLE: z.string().regex(/^[a-z][a-z0-9_]{2,62}$/).optional(),
   BETTER_AUTH_SECRET: z.string().min(32).refine((value) => !/^(replace-with|change_me)/i.test(value), "Generate a random secret"),
   BETTER_AUTH_URL: z.string().url(),

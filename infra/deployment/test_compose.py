@@ -54,6 +54,8 @@ class ComposeTests(unittest.TestCase):
     def render(self, *overrides):
         self.env_file.write_text("\n".join(f"{key}={value}" for key, value in self.values.items()), encoding="utf-8")
         command = ["docker", "compose", "--env-file", str(self.env_file), "-f", str(ops.ROOT / "compose.yaml")]
+        if "compose.provider-proxy-next.yaml" not in overrides:
+            command += ["-f", str(ops.ROOT / "compose.caddy-rollback.yaml")]
         for override in overrides:
             command += ["-f", str(ops.ROOT / override)]
         if "compose.database-ops.yaml" in overrides:
@@ -61,7 +63,7 @@ class ComposeTests(unittest.TestCase):
         return subprocess.run(command + ["config", "--format", "json"], capture_output=True)
 
     def test_direct_and_shared_render_and_pass_full_production_guards(self):
-        for mode in ops.INGRESS_MODES:
+        for mode in (mode for mode in ops.INGRESS_MODES if mode != "provider-proxy-next"):
             self.values["WANGMAI_INGRESS_MODE"] = mode
             result = self.render(f"compose.{mode}.yaml")
             self.assertEqual(result.returncode, 0, "Public fixture render failed")
@@ -82,6 +84,22 @@ class ComposeTests(unittest.TestCase):
                 self.assertNotIn("ports", app)
             self.assertEqual(config["services"]["postgres"]["networks"], {"database": None})
             self.assertEqual(config["services"]["postgres"]["volumes"][0]["source"], "postgres_data")
+
+    def test_provider_render(self):
+        from test_provider_proxy import provider_config
+
+        self.values.update(provider_config()['services']['frontend']['environment'])
+        self.values['WANGMAI_IMAGE_TAG'] = 'a' * 40
+        self.values['WANGMAI_DOMAIN'] = 'calendar.company.org'
+        result = self.render('compose.provider-proxy-next.yaml')
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        config = json.loads(result.stdout)
+        self.assertEqual(ops.validate(config), [])
+        self.assertEqual(set(config['services']), {'frontend', 'backend', 'postgres'})
+        self.assertEqual(set(config['volumes']), {'postgres_data'})
+        self.assertEqual(config['services']['frontend']['ports'][0]['target'], 3000)
+        for name in ('backend', 'postgres'):
+            self.assertNotIn('ports', config['services'][name])
 
     def test_missing_explicit_mode_or_release_tag_fails_compose(self):
         for key in ("WANGMAI_INGRESS_MODE", "WANGMAI_IMAGE_TAG"):
@@ -115,7 +133,7 @@ class ComposeTests(unittest.TestCase):
         result = self.render()
         self.assertEqual(result.returncode, 0)
         self.assertTrue(ops.validate(json.loads(result.stdout)))
-        for order in permutations(ops.INGRESS_MODES, 2):
+        for order in permutations([mode for mode in ops.INGRESS_MODES if mode != "provider-proxy-next"], 2):
             self.values["WANGMAI_INGRESS_MODE"] = order[-1]
             result = self.render(*(f"compose.{mode}.yaml" for mode in order))
             self.assertEqual(result.returncode, 0)
