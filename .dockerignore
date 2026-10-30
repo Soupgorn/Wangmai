@@ -9,6 +9,11 @@
 **/secrets
 **/*.pem
 **/*.key
+**/*.crt
+**/*.cer
+**/*.csr
+**/*.p12
+**/*.pfx
 .vscode
 .idea
 artifacts

@@ -97,7 +97,7 @@ services:
     stop_grace_period: 30s
     environment:
       WANGMAI_DOMAIN: ${WANGMAI_DOMAIN:?Set the real public DNS hostname}
-      WANGMAI_INGRESS_MODE: ${WANGMAI_INGRESS_MODE:?Explicitly select direct-https or shared-gateway and its Compose override}
+      WANGMAI_INGRESS_MODE: ${WANGMAI_INGRESS_MODE:?Explicitly select one reviewed ingress mode and its Compose override}
     # The base alone cannot start ingress. Select exactly one reviewed mode override.
     command: [sh, /etc/caddy/start.sh, unselected]
     volumes:

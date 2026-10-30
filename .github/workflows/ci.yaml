@@ -39,5 +39,9 @@ jobs:
           docker build --build-arg SOURCE_COMMIT="$GITHUB_SHA" -f frontend/Dockerfile -t wangmai-frontend:ci-test .
       - name: Both ingress modes and forwarded-header defenses
         run: python3 -u -B infra/deployment/proxy_smoke.py --node-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test
+      - name: Provisioned HTTPS origin certificate and gateway security
+        run: python3 -u -B infra/deployment/origin_tls_smoke.py --node-image wangmai-backend:ci-test
       - name: Private production Compose simulation with mock Google provider
         run: python3 -u -B infra/deployment/production_smoke.py --backend-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test
+      - name: HTTPS origin production Compose simulation
+        run: python3 -u -B infra/deployment/production_smoke.py --ingress-mode shared-gateway-https --backend-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test

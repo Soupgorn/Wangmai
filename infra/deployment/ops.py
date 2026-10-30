@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Manual deployment guards and binary-safe backups. Never starts production services."""
 import argparse
+import origin_tls
 import hashlib
 import ipaddress
 import json
@@ -16,14 +17,14 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[2]
 
 
-INGRESS_MODES = ("direct-https", "shared-gateway")
+INGRESS_MODES = ("direct-https", "shared-gateway", "shared-gateway-https")
 
 
 def configuration(env_file, local_smoke=False, recovery_file=None, ingress_mode=None, database_ops=False):
     if local_smoke and ingress_mode:
         raise ValueError("Local smoke and production ingress modes cannot be combined.")
     if not local_smoke and ingress_mode not in INGRESS_MODES:
-        raise ValueError("Explicit --ingress-mode direct-https or shared-gateway is required.")
+        raise ValueError("Explicit --ingress-mode direct-https, shared-gateway or shared-gateway-https is required.")
     command = ["docker", "compose", "--project-name", "wangmai-smoke" if local_smoke else "wangmai", "--env-file",
                str(Path(env_file).resolve()), "-f", str(ROOT / "compose.yaml")]
     if local_smoke:
@@ -88,6 +89,10 @@ def validate(config):
         errors.append("DATABASE_URL is malformed.")
     for name in ("frontend", "backend", "postgres"):
         require(not services[name].get("ports"), f"{name} must not publish host ports.")
+    require(all(not service.get("ports") for name, service in services.items() if name != "caddy"),
+            "Only the reviewed Caddy listener may publish host ports.")
+    require(all(service.get("network_mode") != "host" for service in services.values()),
+            "Host networking cannot bypass ingress port restrictions.")
     for name in ("frontend", "backend", "postgres", "caddy"):
         environment = services[name].get("environment", {})
         require(not services[name].get("secrets"), f"{name} must not mount operator secrets in steady-state production.")
@@ -106,24 +111,25 @@ def validate(config):
     require(mode in INGRESS_MODES, "Explicit production ingress mode is required; no fallback is permitted.")
     require(services["caddy"].get("command") == ["sh", "/etc/caddy/start.sh", mode],
             "Caddy must use the startup guard and the matching explicit mode override.")
-    require((ingress.get("WANGMAI_DIRECT_HTTPS_CONFIG") == "selected" and not ingress.get("WANGMAI_SHARED_GATEWAY_CONFIG"))
-            if mode == "direct-https" else (ingress.get("WANGMAI_SHARED_GATEWAY_CONFIG") == "selected" and not ingress.get("WANGMAI_DIRECT_HTTPS_CONFIG")),
-            "Select exactly one ingress Compose override; combining both modes is forbidden.")
+    selectors = {"direct-https": "WANGMAI_DIRECT_HTTPS_CONFIG", "shared-gateway": "WANGMAI_SHARED_GATEWAY_CONFIG", "shared-gateway-https": "WANGMAI_SHARED_GATEWAY_HTTPS_CONFIG"}
+    require(mode in selectors and all(ingress.get(flag) == "selected" if selected == mode else not ingress.get(flag) for selected, flag in selectors.items()),
+            "Select exactly one ingress Compose override; combining modes is forbidden.")
     if mode == "direct-https":
         require(len(ports) == 3 and {(str(p.get("published")), p.get("target"), p.get("protocol", "tcp")) for p in ports}
                 == {("80", 80, "tcp"), ("443", 443, "tcp"), ("443", 443, "udp")},
                 "Direct HTTPS must publish only 80/tcp, 443/tcp and 443/udp.")
-    elif mode == "shared-gateway":
-        require(len(ports) == 1 and str(ports[0].get("published")) == "80"
-                and ports[0].get("target") == 80 and ports[0].get("protocol", "tcp") == "tcp",
-                "Shared gateway must publish only origin 80/tcp.")
+    elif mode in ("shared-gateway", "shared-gateway-https"):
+        port = 443 if mode == "shared-gateway-https" else 80
+        require(len(ports) == 1 and str(ports[0].get("published")) == str(port)
+                and ports[0].get("target") == port and ports[0].get("protocol", "tcp") == "tcp",
+                "Shared gateway must publish only its selected origin TCP port.")
         try:
             bind = ipaddress.ip_address(ports[0].get("host_ip", "")) if ports else None
             require(isinstance(bind, ipaddress.IPv4Address) and any(bind in ipaddress.ip_network(cidr) for cidr in
                     ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")),
-                    "HTTP origin must bind an explicitly verified private IPv4 interface.")
+                    "Gateway origin must bind an explicitly verified private IPv4 interface.")
         except ValueError:
-            errors.append("HTTP origin must bind an explicitly verified private IPv4 interface.")
+            errors.append("Gateway origin must bind an explicitly verified private IPv4 interface.")
         raw_cidrs = ingress.get("WANGMAI_GATEWAY_CIDRS", "")
         try:
             cidrs = raw_cidrs.split(" ")
@@ -143,6 +149,8 @@ def validate(config):
         reference = ingress.get("WANGMAI_GATEWAY_CONTRACT_REFERENCE", "")
         require(configured(reference) and reference.strip() == reference and reference.lower() not in ("unverified", "pending", "unknown"),
                 "Record a reviewed gateway security contract evidence reference before activation.")
+    if mode == "shared-gateway-https":
+        errors.extend(origin_tls.validate(config))
     for name in ("frontend", "backend"):
         require(bool(re.fullmatch(rf"wangmai-{name}:[a-f0-9]{{40}}", services[name]["image"])),
                 f"{name} image tag must be the full reviewed Git commit SHA.")

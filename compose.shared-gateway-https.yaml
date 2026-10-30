@@ -1,0 +1,33 @@
+# Provisioned, gateway-verified TLS only. No ACME, internal CA or HTTP fallback.
+services:
+  caddy:
+    command: [sh, /etc/caddy/start.sh, shared-gateway-https]
+    environment:
+      WANGMAI_SHARED_GATEWAY_HTTPS_CONFIG: selected
+      WANGMAI_GATEWAY_CIDRS: ${WANGMAI_GATEWAY_CIDRS:?Set only verified gateway TCP peer CIDRs}
+      WANGMAI_GATEWAY_HEADERS_VERIFIED: ${WANGMAI_GATEWAY_HEADERS_VERIFIED:?Gateway headers must be verified}
+      WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED: ${WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED:?Origin confidentiality must be verified}
+      WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED: ${WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED:?Origin source restrictions must be verified}
+      WANGMAI_GATEWAY_CONTRACT_REFERENCE: ${WANGMAI_GATEWAY_CONTRACT_REFERENCE:?Record gateway security evidence}
+      WANGMAI_GATEWAY_TLS_VERIFICATION_VERIFIED: ${WANGMAI_GATEWAY_TLS_VERIFICATION_VERIFIED:?Confirm actual upstream chain and identity verification}
+      WANGMAI_GATEWAY_TLS_CONTRACT_REFERENCE: ${WANGMAI_GATEWAY_TLS_CONTRACT_REFERENCE:?Record upstream TLS identity and trust contract evidence}
+      WANGMAI_ORIGIN_TLS_IDENTITY: ${WANGMAI_ORIGIN_TLS_IDENTITY:?Set the identity actually verified by the gateway}
+      WANGMAI_ORIGIN_BIND_IP: ${WANGMAI_ORIGIN_BIND_IP:?Set the verified private VM interface IP}
+    ports: !override
+      - "${WANGMAI_ORIGIN_BIND_IP:?Set the verified private VM interface IP}:443:443/tcp"
+    volumes:
+      - type: bind
+        source: ${WANGMAI_ORIGIN_TLS_CERT_FILE:?Provision the PEM leaf and intermediate chain}
+        target: /run/wangmai-origin/fullchain.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${WANGMAI_ORIGIN_TLS_KEY_FILE:?Provision the protected matching private key}
+        target: /run/wangmai-origin/private.key
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${WANGMAI_ORIGIN_TLS_CA_FILE:?Provide the reviewed gateway trust anchors}
+        target: /run/wangmai-origin/trust.pem
+        read_only: true
+        bind: {create_host_path: false}
