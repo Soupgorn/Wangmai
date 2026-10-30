@@ -11,6 +11,7 @@ import {
 } from "@wangmai/shared";
 import type { Auth } from "../../auth/auth.js";
 import type { Database } from "../../db/client.js";
+import { reportRequestFailure, type ApiVariables } from "../../operations.js";
 import { scheduleEntry as entry, scheduleException as exception, schedulePreference as preference } from "../../db/schema.js";
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -48,10 +49,11 @@ async function owned(tx: Tx, userId: string, id: string) {
 }
 
 export function scheduleRoutes(auth: Auth, db: Database) {
-  const routes = new Hono<{ Variables: { userId: string } }>();
+  const routes = new Hono<{ Variables: ApiVariables }>();
   routes.onError((error, c) => {
     if (error instanceof ScheduleError) return c.json({ error: { code: error.code, message: error.message } }, error.status);
     if (error instanceof z.ZodError) return c.json({ error: { code: "INVALID_INPUT", message: error.issues[0]?.message ?? "Invalid schedule input." } }, 400);
+    reportRequestFailure(c.get("requestId"));
     return c.json({ error: { code: "DATABASE_UNAVAILABLE", message: "Your schedule is temporarily unavailable. Please try again." } }, 503);
   });
   routes.use("*", async (c, next) => {

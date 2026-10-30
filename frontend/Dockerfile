@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS base
+ARG NODE_IMAGE=node:24-bookworm-slim
+FROM ${NODE_IMAGE} AS base
 WORKDIR /app
 
 FROM base AS dependencies
@@ -14,7 +15,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
 RUN npm run build --workspace=@wangmai/shared && npm run build --workspace=@wangmai/frontend
 
-FROM node:24-bookworm-slim AS runtime
+FROM ${NODE_IMAGE} AS runtime
+ARG SOURCE_COMMIT=unreleased
+LABEL org.opencontainers.image.revision=${SOURCE_COMMIT}
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

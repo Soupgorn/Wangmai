@@ -3,13 +3,17 @@ import { and, between, eq, exists, ne, or, sql } from "drizzle-orm";
 import { availabilityQuerySchema, availabilityResponseSchema, classifyScheduleAvailability, googleProfileImage, inclusiveCalendarDates, scheduleDate, type AvailabilityBlock, type AvailabilitySearchResponse, type BlockDraft } from "@wangmai/shared";
 import type { Auth } from "../../auth/auth.js";
 import type { Database } from "../../db/client.js";
+import { reportRequestFailure, type ApiVariables } from "../../operations.js";
 import { account, scheduleEntry as entry, scheduleException as exception, schedulePreference as preference, user } from "../../db/schema.js";
 
 const clock = (minute: number) => `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 
 export function availabilityRoutes(auth: Auth, db: Database) {
-  const routes = new Hono();
-  routes.onError((_error, c) => c.json({ error: { code: "AVAILABILITY_UNAVAILABLE", message: "Shared availability could not load. Please try again." } }, 503));
+  const routes = new Hono<{ Variables: ApiVariables }>();
+  routes.onError((_error, c) => {
+    reportRequestFailure(c.get("requestId"));
+    return c.json({ error: { code: "AVAILABILITY_UNAVAILABLE", message: "Shared availability could not load. Please try again." } }, 503);
+  });
   routes.get("/", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers, returnHeaders: true });
     for (const cookie of session.headers.getSetCookie()) c.header("Set-Cookie", cookie, { append: true });

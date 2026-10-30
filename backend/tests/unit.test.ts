@@ -26,9 +26,14 @@ test("production requires HTTPS and real configuration", () => {
   assert.throws(() => loadEnv({ ...base, NODE_ENV: "production" }), /BETTER_AUTH_URL|GOOGLE_CLIENT_ID/);
 });
 test("production runtime requires its own explicit identity and refuses URL overrides", () => {
-  const production = { ...base, NODE_ENV: "production", DATABASE_RUNTIME_ROLE: "app_runtime", DATABASE_URL: "postgresql://app_runtime:testing-only@postgres/wangmai",
-    BETTER_AUTH_URL: "https://calendar.invalid", GOOGLE_CLIENT_ID: "test-client", GOOGLE_CLIENT_SECRET: "test-secret" };
+  const production = { ...base, NODE_ENV: "production", DATABASE_RUNTIME_ROLE: "app_runtime", DATABASE_URL: "postgresql://app_runtime:testing-only-password-long-enough@postgres/wangmai",
+    BETTER_AUTH_URL: "https://calendar.invalid", GOOGLE_CLIENT_ID: "test.apps.googleusercontent.com", GOOGLE_CLIENT_SECRET: "test-secret" };
   assert.equal(loadEnv(production).DATABASE_RUNTIME_ROLE, "app_runtime");
+  for (const override of [{ BETTER_AUTH_SECRET: "CHANGE_ME_0000000000000000000000000000000000" },
+    { GOOGLE_CLIENT_ID: "test-client" }, { GOOGLE_CLIENT_SECRET: "CHANGE_ME_0000000000000000000000000000" },
+    { DATABASE_URL: "postgresql://app_runtime:short@postgres/wangmai" }]) {
+    assert.throws(() => loadEnv({ ...production, ...override }), (error: Error) => !error.message.includes("CHANGE_ME") && !error.message.includes("postgresql://"));
+  }
   for (const override of [{ DATABASE_RUNTIME_ROLE: undefined }, { DATABASE_RUNTIME_ROLE: "admin" }, { DATABASE_URL: production.DATABASE_URL + "?user=admin" }]) {
     assert.throws(() => loadEnv({ ...production, ...override }), /DATABASE_URL/);
   }

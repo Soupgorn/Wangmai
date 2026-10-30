@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS base
+ARG NODE_IMAGE=node:24-bookworm-slim
+FROM ${NODE_IMAGE} AS base
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY frontend/package.json ./frontend/package.json
@@ -16,7 +17,9 @@ RUN npm run build --workspace=@wangmai/shared && npm run build --workspace=@wang
 FROM base AS production-dependencies
 RUN --mount=type=cache,id=wangmai-npm,target=/root/.npm npm ci --omit=dev --workspace=@wangmai/backend --workspace=@wangmai/shared --include-workspace-root=false --no-audit --no-fund
 
-FROM node:24-bookworm-slim AS runtime
+FROM ${NODE_IMAGE} AS runtime
+ARG SOURCE_COMMIT=unreleased
+LABEL org.opencontainers.image.revision=${SOURCE_COMMIT}
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

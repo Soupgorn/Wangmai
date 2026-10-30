@@ -61,6 +61,9 @@ class ComposeTests(unittest.TestCase):
                 self.assertEqual(app["restart"], "unless-stopped")
                 self.assertEqual(app["logging"]["options"], {"max-file": "3", "max-size": "10m"})
                 self.assertIn("healthcheck", app)
+                path = "/health/ready" if service == "frontend" else "/api/ready"
+                self.assertIn(path, " ".join(app["healthcheck"]["test"]))
+                self.assertEqual(app["build"]["args"]["SOURCE_COMMIT"], self.values["WANGMAI_IMAGE_TAG"])
                 self.assertNotIn("ports", app)
             self.assertEqual(config["services"]["postgres"]["networks"], {"database": None})
             self.assertEqual(config["services"]["postgres"]["volumes"][0]["source"], "postgres_data")

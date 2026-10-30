@@ -2,6 +2,7 @@
 """Isolated proxy contract smoke. Uses only local images and synthetic upstreams."""
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,7 +28,7 @@ def main():
     parser.add_argument("--postgres-image", default="postgres:18-alpine", help="Existing image for optional disposable application database")
     args = parser.parse_args()
     endpoint = docker("context", "inspect", "--format", "{{.Endpoints.docker.Host}}")
-    if not (endpoint.startswith("npipe://") or endpoint.startswith("unix://")):
+    if os.environ.get("DOCKER_HOST") or not endpoint.startswith(("npipe://", "unix://")):
         raise RuntimeError("Smoke requires an explicitly reviewed local Docker socket context.")
     for image in (args.caddy_image, args.node_image):
         docker("image", "inspect", image, "--format", "{{.Id}}")
