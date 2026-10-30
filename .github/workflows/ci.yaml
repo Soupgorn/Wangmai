@@ -21,7 +21,14 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
-      - run: docker compose --env-file .env.example -f compose.yaml config --quiet
+      - run: npm test
+      - run: docker compose --env-file .env.example -f compose.yaml -f compose.direct-https.yaml config --quiet
         env:
           WANGMAI_IMAGE_TAG: ci-config-validation
+          WANGMAI_INGRESS_MODE: direct-https
+          POSTGRES_RUNTIME_USER: wangmai_runtime
+          POSTGRES_MIGRATION_USER: wangmai_migrator
+      - run: python3 -B -m unittest discover -s infra/deployment -p 'test_*.py' -v
+      - run: docker pull postgres:18-alpine
+      - run: python3 -u -B infra/deployment/role_smoke.py
       - run: docker compose --env-file .env.example -f compose.dev.yaml config --quiet

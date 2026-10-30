@@ -12,6 +12,7 @@ export const envSchema = z.object({
   POSTGRES_DB: z.string().min(1).default("wangmai"),
   POSTGRES_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
   DATABASE_URL: z.string().url(),
+  DATABASE_RUNTIME_ROLE: z.string().regex(/^[a-z][a-z0-9_]{2,62}$/).optional(),
   BETTER_AUTH_SECRET: z.string().min(32).refine((value) => !value.startsWith("replace-with"), "Generate a random secret"),
   BETTER_AUTH_URL: z.string().url(),
   GOOGLE_CLIENT_ID: optionalCredential,
@@ -32,10 +33,14 @@ export const envSchema = z.object({
   }
 });
 
-export type DatabaseTarget = { NODE_ENV: string; DATABASE_URL: string; POSTGRES_DB: string; POSTGRES_PORT: number };
+export type DatabaseTarget = { NODE_ENV: string; DATABASE_URL: string; POSTGRES_DB: string; POSTGRES_PORT: number; DATABASE_RUNTIME_ROLE?: string | undefined };
 export function validateDatabaseTarget(env: DatabaseTarget) {
   const url = new URL(env.DATABASE_URL);
   if (!["postgresql:", "postgres:"].includes(url.protocol)) throw new Error("Invalid database target");
+  if (env.NODE_ENV === "production" && (!env.DATABASE_RUNTIME_ROLE ||
+    decodeURIComponent(url.username) !== env.DATABASE_RUNTIME_ROLE || !url.password || url.search || url.hash)) {
+    throw new Error("Invalid runtime database identity");
+  }
   if (env.NODE_ENV !== "production" && (
     !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
     decodeURIComponent(url.pathname.slice(1)) !== env.POSTGRES_DB ||

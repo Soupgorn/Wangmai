@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import test from "node:test";
 import { loadEnv } from "../src/config/env.js";
+import { migrationEnvironment } from "../src/db/operator-env.js";
 
 const base = {
   NODE_ENV: "test", DATABASE_URL: "postgresql://local:local@localhost:5432/wangmai",
@@ -23,4 +24,27 @@ test("environment rejects weak secrets, malformed origins and incomplete credent
 });
 test("production requires HTTPS and real configuration", () => {
   assert.throws(() => loadEnv({ ...base, NODE_ENV: "production" }), /BETTER_AUTH_URL|GOOGLE_CLIENT_ID/);
+});
+test("production runtime requires its own explicit identity and refuses URL overrides", () => {
+  const production = { ...base, NODE_ENV: "production", DATABASE_RUNTIME_ROLE: "app_runtime", DATABASE_URL: "postgresql://app_runtime:testing-only@postgres/wangmai",
+    BETTER_AUTH_URL: "https://calendar.invalid", GOOGLE_CLIENT_ID: "test-client", GOOGLE_CLIENT_SECRET: "test-secret" };
+  assert.equal(loadEnv(production).DATABASE_RUNTIME_ROLE, "app_runtime");
+  for (const override of [{ DATABASE_RUNTIME_ROLE: undefined }, { DATABASE_RUNTIME_ROLE: "admin" }, { DATABASE_URL: production.DATABASE_URL + "?user=admin" }]) {
+    assert.throws(() => loadEnv({ ...production, ...override }), /DATABASE_URL/);
+  }
+});
+test("production migration never falls back to runtime or needs Google/auth secrets", () => {
+  const source = { NODE_ENV: "production", DATABASE_URL: "postgresql://app_runtime:sensitive-runtime@postgres/wangmai",
+    DATABASE_RUNTIME_ROLE: "app_runtime", DATABASE_MIGRATION_ROLE: "app_migrator" };
+  assert.throws(() => migrationEnvironment(source), /Missing/);
+  const valid = { ...source, MIGRATION_DATABASE_URL: "postgresql://app_migrator:sensitive-migrator@postgres/wangmai" };
+  assert.equal(migrationEnvironment(valid).migrationRole, "app_migrator");
+  for (const override of [{ DATABASE_MIGRATION_ROLE: "app_runtime" }, { MIGRATION_DATABASE_URL: source.DATABASE_URL },
+    { MIGRATION_DATABASE_URL: valid.MIGRATION_DATABASE_URL + "?host=remote" }, { MIGRATION_DATABASE_URL_FILE: "not-read-when-ambiguous" }]) {
+    assert.throws(() => migrationEnvironment({ ...valid, ...override }), (error: Error) => !error.message.includes("sensitive-"));
+  }
+});
+test("native development migrations retain guarded local DATABASE_URL compatibility", () => {
+  assert.equal(migrationEnvironment(base).production, false);
+  assert.throws(() => migrationEnvironment({ ...base, DATABASE_URL: "postgresql://test:test@remote/wangmai" }), /Unsafe/);
 });

@@ -147,7 +147,9 @@ Browser requests use the same public origin. Development Next rewrites preserve
 `/api`; production Caddy sends `/api/*` directly to Hono. Caddy routing is unchanged.
 Production Compose now passes auth variables to Hono and the internal backend
 origin to Next. The backend Dockerfile includes migration artifacts, allowing a
-manually authorized operator to run `node backend/dist/db/migrate.js` inside the image.
+manually authorized operator to use the separate one-shot migrator. See the
+[production role/bootstrap/recovery procedure](docs/postgresql-role-security.md);
+production migrations never use the API runtime credentials.
 No production environment or deployment was assumed, accessed or started.
 
 ## Frontend behavior and preview boundary
