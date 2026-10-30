@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 from uuid import uuid4
+import tls_fixtures
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -26,6 +27,7 @@ def main():
     parser.add_argument("--frontend-image", required=True)
     parser.add_argument("--postgres-image", default="postgres:18-alpine")
     parser.add_argument("--caddy-image", default="caddy:2-alpine")
+    parser.add_argument("--ingress-mode", choices=("shared-gateway", "shared-gateway-https"), default="shared-gateway")
     args = parser.parse_args()
     endpoint = command(["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"])
     if os.environ.get("DOCKER_HOST") or not endpoint.startswith(("unix://", "npipe://")):
@@ -61,6 +63,19 @@ wangmai.invalid {
   reverse_proxy caddy:80
 }
 '''
+        if args.ingress_mode == "shared-gateway-https":
+            tls_fixtures.provision(fixture / "origin-tls")
+            # Test gateway explicitly supports this DNS identity and this disposable
+            # CA. This supplies no evidence about real NaCl capabilities.
+            shutil.copyfile(fixture / "origin-tls/trust.pem", fixture / "origin-trust.pem")
+            (fixture / "origin-trust.pem").chmod(0o644)
+            gateway_config = gateway_config.replace("reverse_proxy caddy:80", """reverse_proxy https://caddy:443 {
+    header_up Host {hostport}
+    transport http {
+      tls_server_name origin.invalid
+      tls_trust_pool file /fixtures/origin-trust.pem
+    }
+  }""")
         (fixture / "gateway.Caddyfile").write_text(gateway_config)
         (fixture / "gateway.Caddyfile").chmod(0o644)
         secrets = {"admin": "simulation-admin-password-00000000", "runtime": "simulation-runtime-password-00000000", "migrator": "simulation-migrator-password-00000000",
@@ -74,7 +89,7 @@ wangmai.invalid {
             command(["docker", "run", "--rm", "--pull", "never", "--network", "none", "--user", "0:0", "--mount", f"type=bind,source={fixture},target=/fixtures",
                      "--entrypoint", "chown", args.backend_image, "1000:1000", *["/fixtures/" + name for name in secrets]])
         env_values = {
-            "WANGMAI_IMAGE_TAG": "simulation-only", "WANGMAI_INGRESS_MODE": "shared-gateway", "WANGMAI_DOMAIN": "wangmai.invalid",
+            "WANGMAI_IMAGE_TAG": "simulation-only", "WANGMAI_INGRESS_MODE": args.ingress_mode, "WANGMAI_DOMAIN": "wangmai.invalid",
             "WANGMAI_ORIGIN_BIND_IP": "127.0.0.1", "WANGMAI_GATEWAY_CIDRS": "192.0.2.1/32",
             "WANGMAI_GATEWAY_HEADERS_VERIFIED": "verified", "WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED": "verified",
             "WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED": "verified", "WANGMAI_GATEWAY_CONTRACT_REFERENCE": "disposable-simulation-only",
@@ -86,6 +101,13 @@ wangmai.invalid {
             "POSTGRES_ADMIN_PASSWORD_FILE": str(fixture / "admin"), "POSTGRES_RUNTIME_PASSWORD_FILE": str(fixture / "runtime"),
             "POSTGRES_MIGRATION_PASSWORD_FILE": str(fixture / "migrator"), "MIGRATION_DATABASE_URL_FILE": str(fixture / "migration-url"),
         }
+        if args.ingress_mode == "shared-gateway-https":
+            env_values.update({"WANGMAI_GATEWAY_TLS_VERIFICATION_VERIFIED": "verified",
+                "WANGMAI_ORIGIN_BIND_IP": "10.20.30.40",
+                "WANGMAI_GATEWAY_TLS_CONTRACT_REFERENCE": "disposable-simulation-only", "WANGMAI_ORIGIN_TLS_IDENTITY": "origin.invalid",
+                "WANGMAI_ORIGIN_TLS_CERT_FILE": str(fixture / "origin-tls/fullchain.pem"),
+                "WANGMAI_ORIGIN_TLS_KEY_FILE": str(fixture / "origin-tls/private.key"),
+                "WANGMAI_ORIGIN_TLS_CA_FILE": str(fixture / "origin-tls/trust.pem")})
         env_file = fixture / "fixtures.env"
         def write_env():
             env_file.write_text("\n".join(f"{key}={value}" for key, value in env_values.items()))
@@ -110,7 +132,7 @@ wangmai.invalid {
         ports_path = fixture / "compose.no-ports.yaml"
         ports_path.write_text("services:\n  caddy:\n    ports: !override []\n")
         base = ["docker", "compose", "--project-name", project, "--env-file", str(env_file), "-f", str(ROOT / "compose.yaml"),
-                "-f", str(ROOT / "compose.shared-gateway.yaml"), "-f", str(ROOT / "compose.database-ops.yaml"), "-f", str(override_path), "-f", str(ports_path), "--profile", "database-ops"]
+                "-f", str(ROOT / f"compose.{args.ingress_mode}.yaml"), "-f", str(ROOT / "compose.database-ops.yaml"), "-f", str(override_path), "-f", str(ports_path), "--profile", "database-ops"]
         def dc(*args2):
             return command(base + list(args2), env=safe_env)
         model = json.loads(dc("config", "--format", "json"))

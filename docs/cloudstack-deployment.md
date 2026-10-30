@@ -1,16 +1,21 @@
-# CloudStack manual deployment runbook — Phase 6C.2
+# CloudStack manual deployment runbook — Phase 6E
 
 This is a preparation runbook, not deployment authorization. Phases 6C.1 and 6C.2 are local code
 and configuration work only. The owner reports an existing NaCl HTTPS gateway and
 private VM (details below); no VM connection or public endpoint verification was
 performed in this phase. Google production credentials, storage/backup readiness,
 and the gateway security contract remain unverified. **Production activation is BLOCKED.**
-Direct Caddy startup requests public certificates; shared-gateway startup never does.
+Direct Caddy startup requests public certificates; neither shared-gateway mode does.
+For the current approved-release report, TLS contract, secure provisioning and exact
+operator sequence see [Phase 6E HTTPS origin](phase-6e-https-origin.md). That document
+supersedes the historical infrastructure snapshot below; no live checks occurred here.
 
 ## Architecture and release gates
 
 Direct mode: Internet → Caddy :80/:443 → Next.js :3000 / Hono :4000 → PostgreSQL :5432.
 Shared mode: Internet HTTPS → NaCl openresty → protected HTTP origin Caddy :80 → same apps/DB.
+HTTPS-origin mode: Internet HTTPS → NaCl with verified upstream TLS → provisioned
+Caddy :443 on the verified private interface → the same apps/DB.
 Only Caddy publishes ports. The database network is internal. Application containers
 run as `node`, drop Linux capabilities, and cannot gain privileges. Backend outbound
 access remains available for Google OAuth. Do not publish Docker's socket or admin API.
@@ -27,12 +32,13 @@ This is a single-VM deployment with downtime during updates, not high availabili
 
 ## 0. Select ingress explicitly and verify the gateway contract
 
-The two production modes use the same images, business logic, auth settings and
+The three production modes use the same images, business logic, auth settings and
 database. `compose.yaml` alone publishes no ports and refuses to start ingress.
 Always select **exactly one** override, with the matching `WANGMAI_INGRESS_MODE`
 in the protected env file. A mismatch, unknown mode or both overrides fails the
 startup guard and preflight. There is no automatic HTTP fallback or mode detection.
-Compose >=2.24.4 is required for both modes (`!override` replaces port lists).
+Compose >=2.24.4 is required (`!override` replaces port lists). HTTPS-origin preflight
+also requires Python 3.12+ and OpenSSL 3+; missing tools fail closed.
 
 | Setting | `direct-https` | `shared-gateway` |
 | --- | --- | --- |
@@ -44,7 +50,13 @@ Compose >=2.24.4 is required for both modes (`!override` replaces port lists).
 | Public auth origin | `https://WANGMAI_DOMAIN` | Same public HTTPS origin, never HTTP/private IP |
 | Additional security gates | Direct DNS/ACME reachability | Gateway sources, headers, access controls, origin confidentiality and evidence reference |
 
-Owner-provided infrastructure snapshot (30 October 2026):
+`shared-gateway-https` selects **only** `compose.shared-gateway-https.yaml` and
+`Caddyfile.shared-gateway-https`. It publishes only `<verified-private-IP>:443:443/tcp`,
+uses three explicitly provisioned read-only TLS file mounts, and requires additional
+TLS verification/identity/trust evidence. It has no HTTP listener, automatic certificate
+issuance or redirect. See the [HTTPS-origin operator sequence](phase-6e-https-origin.md#operator-sequence-future-authorized-work-only).
+
+Historical owner-provided Phase 6C infrastructure snapshot (not current inventory):
 
 - Public origin: `https://wangmai.public.cloud.ce-nacl.com`; shared openresty gateway
   already has a valid public certificate.
@@ -129,10 +141,11 @@ For subsequent **future authorized** commands, select the reviewed mode in Bash
 without sourcing the env file; ensure its `WANGMAI_INGRESS_MODE` agrees:
 
 ```bash
-read -r -p 'Reviewed ingress mode (direct-https or shared-gateway): ' INGRESS_MODE
+read -r -p 'Reviewed mode (direct-https/shared-gateway/shared-gateway-https): ' INGRESS_MODE
 case "$INGRESS_MODE" in
   direct-https) CADDY_CONFIG=/etc/caddy/Caddyfile ;;
   shared-gateway) CADDY_CONFIG=/etc/caddy/Caddyfile.shared-gateway ;;
+  shared-gateway-https) CADDY_CONFIG=/etc/caddy/Caddyfile.shared-gateway-https ;;
   *) echo 'STOP: explicitly select a supported mode.' >&2; exit 1 ;;
 esac
 dc() { docker compose --project-name wangmai --env-file .env.production -f compose.yaml -f "compose.$INGRESS_MODE.yaml" "$@"; }

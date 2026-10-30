@@ -1,0 +1,31 @@
+{
+	auto_https off
+	default_sni {$WANGMAI_ORIGIN_TLS_IDENTITY}
+	log default {
+		exclude http.log.access http.log.error
+	}
+	servers {
+		protocols h1 h2
+		trusted_proxies static {$WANGMAI_GATEWAY_CIDRS}
+		trusted_proxies_strict
+		client_ip_headers X-Forwarded-For
+	}
+}
+import routes.caddy
+https://:443 {
+	tls /run/wangmai-origin/fullchain.pem /run/wangmai-origin/private.key
+	route {
+		# Match the actual TCP peer, never a client-supplied IP header.
+		@untrusted not remote_ip {$WANGMAI_GATEWAY_CIDRS}
+		respond @untrusted "Forbidden" 403
+		@wrongHost not host {$WANGMAI_DOMAIN}
+		respond @wrongHost "Misdirected Request" 421
+		# Only a sanitized single HTTPS value is accepted; no redirects at the origin.
+		@wrongScheme not header X-Forwarded-Proto https
+		respond @wrongScheme "Invalid gateway scheme" 400
+		@wrongForwardedHost not header X-Forwarded-Host {$WANGMAI_DOMAIN}
+		respond @wrongForwardedHost "Invalid gateway host" 400
+		vars public_scheme https
+		import wangmai_routes
+	}
+}

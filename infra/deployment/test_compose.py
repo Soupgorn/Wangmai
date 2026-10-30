@@ -7,12 +7,22 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+from itertools import permutations
+import tls_fixtures
 
 from test_ops import ops
 
 
 @unittest.skipUnless(shutil.which("docker"), "Docker CLI is required for Compose rendering")
 class ComposeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tls = tempfile.TemporaryDirectory(prefix="wangmai-compose-tls-")
+        tls_fixtures.provision(Path(cls.tls.name))
+
+    @classmethod
+    def tearDownClass(cls): cls.tls.cleanup()
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -28,6 +38,11 @@ class ComposeTests(unittest.TestCase):
             "WANGMAI_GATEWAY_CIDRS": "192.0.2.10/32", "WANGMAI_ORIGIN_BIND_IP": "10.20.30.40",
             "WANGMAI_GATEWAY_HEADERS_VERIFIED": "verified", "WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED": "verified",
             "WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED": "verified", "WANGMAI_GATEWAY_CONTRACT_REFERENCE": "review/GW-123",
+            "WANGMAI_GATEWAY_TLS_VERIFICATION_VERIFIED": "verified", "WANGMAI_GATEWAY_TLS_CONTRACT_REFERENCE": "review/TLS-123",
+            "WANGMAI_ORIGIN_TLS_IDENTITY": "10.20.30.40",
+            "WANGMAI_ORIGIN_TLS_CERT_FILE": str(Path(self.tls.name) / "fullchain.pem"),
+            "WANGMAI_ORIGIN_TLS_KEY_FILE": str(Path(self.tls.name) / "private.key"),
+            "WANGMAI_ORIGIN_TLS_CA_FILE": str(Path(self.tls.name) / "trust.pem"),
         }
         # Never let workstation credentials or COMPOSE overrides enter a fixture render.
         safe_env = {key: value for key, value in os.environ.items()
@@ -100,7 +115,7 @@ class ComposeTests(unittest.TestCase):
         result = self.render()
         self.assertEqual(result.returncode, 0)
         self.assertTrue(ops.validate(json.loads(result.stdout)))
-        for order in (("direct-https", "shared-gateway"), ("shared-gateway", "direct-https")):
+        for order in permutations(ops.INGRESS_MODES, 2):
             self.values["WANGMAI_INGRESS_MODE"] = order[-1]
             result = self.render(*(f"compose.{mode}.yaml" for mode in order))
             self.assertEqual(result.returncode, 0)

@@ -7,11 +7,13 @@ const [mode, peerIP] = process.argv.slice(2);
 const domain = "wangmai.invalid";
 const query = "?code=synthetic-oauth-marker&state=fixture%2Bstate&scope=openid%20email&state=second";
 const callback = "/api/auth/callback/google" + query;
+const originTLS = mode === "gateway-https" || mode === "untrusted-https";
 function request(path, headers = {}, { tls = false, target = "shared", method = "GET" } = {}) {
+  if (originTLS) { tls = true; target = peerIP; }
   return new Promise((resolve, reject) => {
     const req = (tls ? https : http).request({
       hostname: target, port: tls ? 443 : 80, path, method,
-      servername: domain, ...(tls ? { ca: readFileSync("/fixtures/root.crt") } : {}),
+      servername: originTLS ? "" : domain, ...(tls ? { ca: readFileSync("/fixtures/root.crt") } : {}),
       headers: { Host: domain, ...headers },
     }, res => {
       let body = "";
@@ -24,10 +26,10 @@ function request(path, headers = {}, { tls = false, target = "shared", method = 
   });
 }
 const gatewayHeaders = { "X-Forwarded-Proto": "https", "X-Forwarded-Host": domain, "X-Forwarded-For": "203.0.113.66, 198.51.100.8" };
-if (mode === "untrusted") {
+if (mode === "untrusted" || mode === "untrusted-https") {
   const response = await request(callback, gatewayHeaders);
   assert.equal(response.status, 403, "Untrusted peer cannot spoof gateway headers");
-} else if (mode === "gateway") {
+} else if (mode === "gateway" || mode === "gateway-https") {
   for (const [path, service] of [["/", "frontend"], ["/schedule", "frontend"], ["/apiary", "frontend"], ["/api", "backend"], ["/api/", "backend"], [callback, "backend"]]) {
     const response = await request(path, { ...gatewayHeaders, Cookie: "session=synthetic-cookie", Forwarded: "for=evil;proto=http;host=evil.invalid", "X-Real-IP": "203.0.113.66", "X-Forwarded-Port": "1234", "CF-Connecting-IP": "203.0.113.66", "True-Client-IP": "203.0.113.66" });
     assert.equal(response.status, 200, path);
