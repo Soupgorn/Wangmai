@@ -1,13 +1,16 @@
-# CloudStack manual deployment runbook — Phase 6A
+# CloudStack manual deployment runbook — Phase 6C.2
 
-This is a preparation runbook, not deployment authorization. No VM, domain, public
-IP, CloudStack ingress, Google production client, or production backup destination
-has been verified. Complete the release gates below before starting production Caddy:
-starting it requests public certificates. Local testing uses a separate HTTP-only stack.
+This is a preparation runbook, not deployment authorization. Phases 6C.1 and 6C.2 are local code
+and configuration work only. The owner reports an existing NaCl HTTPS gateway and
+private VM (details below); no VM connection or public endpoint verification was
+performed in this phase. Google production credentials, storage/backup readiness,
+and the gateway security contract remain unverified. **Production activation is BLOCKED.**
+Direct Caddy startup requests public certificates; shared-gateway startup never does.
 
 ## Architecture and release gates
 
-Internet → Caddy :80/:443 → Next.js :3000 and Hono :4000 → PostgreSQL :5432.
+Direct mode: Internet → Caddy :80/:443 → Next.js :3000 / Hono :4000 → PostgreSQL :5432.
+Shared mode: Internet HTTPS → NaCl openresty → protected HTTP origin Caddy :80 → same apps/DB.
 Only Caddy publishes ports. The database network is internal. Application containers
 run as `node`, drop Linux capabilities, and cannot gain privileges. Backend outbound
 access remains available for Google OAuth. Do not publish Docker's socket or admin API.
@@ -21,6 +24,126 @@ Before deployment, record owner approval for the reviewed commit, domain, actual
 VM/network topology, Google client, off-VM backup location, recovery objectives,
 and a maintenance window. Keep a previous image archive and its exact environment.
 This is a single-VM deployment with downtime during updates, not high availability.
+
+## 0. Select ingress explicitly and verify the gateway contract
+
+The two production modes use the same images, business logic, auth settings and
+database. `compose.yaml` alone publishes no ports and refuses to start ingress.
+Always select **exactly one** override, with the matching `WANGMAI_INGRESS_MODE`
+in the protected env file. A mismatch, unknown mode or both overrides fails the
+startup guard and preflight. There is no automatic HTTP fallback or mode detection.
+Compose >=2.24.4 is required for both modes (`!override` replaces port lists).
+
+| Setting | `direct-https` | `shared-gateway` |
+| --- | --- | --- |
+| Additional Compose file | `compose.direct-https.yaml` | `compose.shared-gateway.yaml` |
+| Caddy config | `infra/caddy/Caddyfile` | `infra/caddy/Caddyfile.shared-gateway` |
+| TLS termination | Public Caddy; ACME and HTTP→HTTPS redirect | Existing gateway; `auto_https off`, explicit HTTP listener, no origin redirect |
+| Host publication | TCP 80/443, UDP 443 | Only verified private IPv4 interface TCP 80 |
+| Trusted proxies | None | Only administrator-verified TCP peer CIDRs; strict right-to-left XFF parsing |
+| Public auth origin | `https://WANGMAI_DOMAIN` | Same public HTTPS origin, never HTTP/private IP |
+| Additional security gates | Direct DNS/ACME reachability | Gateway sources, headers, access controls, origin confidentiality and evidence reference |
+
+Owner-provided infrastructure snapshot (30 October 2026):
+
+- Public origin: `https://wangmai.public.cloud.ce-nacl.com`; shared openresty gateway
+  already has a valid public certificate.
+- Active upstream mapping: `http://10.60.2.22:80`. This is an origin destination,
+  **not** a gateway source address and must never be used as a guessed trusted proxy.
+- VM: Ubuntu 26.04.1 LTS, 2 vCPU, 3.8 GiB RAM, Docker not installed yet.
+- Public response is reported as 502 while no application is running on port 80.
+  Connection refusal, timeout, firewall or another exact upstream failure is **not
+  confirmed**. Request sanitized gateway error classification/timestamp and operator
+  listener/routing evidence; never attach OAuth URLs, cookies or credentials.
+
+The existing mapping selects the shared architecture for planning, but does not
+authorize activation. Before filling shared-mode settings, obtain written evidence
+from the NaCl gateway/network administrators for **all** of the following:
+
+1. Exact, narrow source IPv4/IPv6 CIDRs as actually observed at Caddy's TCP socket,
+   including all gateway failover nodes, NAT/SNAT and Docker forwarding effects.
+   Do not trust all RFC1918 ranges, the VM destination IP, or Docker bridge ranges
+   merely because they are private. If Docker masks multiple tenants behind a
+   common peer, the allowlist cannot authenticate the gateway: block activation.
+2. The public vhost accepts only the approved Host; HTTP clients redirect to HTTPS
+   **at the gateway**, before forwarding auth/cookies. HTTPS requests preserve the
+   original public `Host`, method, `/api` prefix, full encoded query, cookies and
+   multiple `Set-Cookie` headers. No upstream redirect rewriting to private origins.
+3. Gateway configuration strips client-provided `Forwarded` and all `X-Forwarded-*`
+   identity/scheme headers, then sets a **single** `X-Forwarded-Proto: https`, a
+   **single** `X-Forwarded-Host` equal to the public hostname, and an authoritative
+   client `X-Forwarded-For`. Overwrite XFF at this public edge; if additional proxies
+   exist, provide their complete sanitization/trust chain for review. Reject duplicate
+   or ambiguous inputs. Do not rely on blindly appending a client-supplied XFF value.
+4. CloudStack/host/Docker-aware ingress controls permit origin TCP 80 only from those
+   gateway peers, with no public bypass, tenant path, alternate NIC/IPv6 listener or
+   access to 3000/4000/5432/2019/Docker API. Caddy's `remote_ip` check is a second layer.
+5. Confidentiality **and integrity** of the entire gateway→origin hop against other
+   tenants and on-path attackers. Plain HTTP exposes authorization codes, cookies,
+   tokens and user data on that hop. A private address, ACL, VLAN or shared network
+   alone does not prove confidentiality. Require evidence of an authenticated,
+   encrypted transport/underlay covering the complete path and its trust boundaries.
+   If that cannot be verified, **HTTP-origin production remains BLOCKED**; plan a
+   separately reviewed encrypted origin/tunnel or supported HTTPS architecture.
+   Never accept the risk by automatically switching modes or trusting the subnet.
+6. Gateway access/error/debug logging and monitoring omit/redact query strings,
+   Authorization/Cookie/Set-Cookie and bodies that contain OAuth/session secrets;
+   owners, retention, renewal responsibility and change notification are recorded.
+
+Only after review, set `WANGMAI_GATEWAY_CIDRS` to space-separated canonical CIDRs,
+`WANGMAI_ORIGIN_BIND_IP` to the verified private origin interface, and set each of
+`WANGMAI_GATEWAY_HEADERS_VERIFIED`, `WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED` and
+`WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED` to exactly `verified`. Record a durable
+review/ticket reference in `WANGMAI_GATEWAY_CONTRACT_REFERENCE`. These values are
+operator attestations, **not proof**: preflight cannot inspect the gateway, firewall
+or encryption. Keep the template `unverified` until evidence exists. Production
+preflight still rejects placeholders, weak secrets, non-SHA release tags and unpinned
+images. A passing preflight alone never authorizes startup.
+
+Both modes import `routes.caddy`: `/api` and `/api/*` go to Hono :4000; every other
+path goes to Next :3000. There is no path stripping or query rewriting. The origin
+rejects untrusted TCP peers (403), incorrect public Host (421), and incorrect/missing
+gateway scheme or forwarded host (400); it never redirects those requests.
+Caddy removes incoming forwarding/alternate-IP headers and sends normalized Host,
+X-Forwarded-Host, HTTPS X-Forwarded-Proto and a single resolved X-Forwarded-For.
+Direct mode resolves the TCP peer; gateway mode uses only the verified trust list.
+This follows Caddy's [forwarded-header behavior](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#defaults)
+and [peer matcher semantics](https://caddyserver.com/docs/caddyfile/matchers#remote_ip).
+
+No access log is enabled. Caddy's request-bearing error logger is also excluded to
+prevent callback query leakage on upstream failures; use health checks, status codes
+and sanitized operator diagnostics. Do not enable debug/request logging in production.
+Better Auth retains the fixed environment-driven `baseURL`, sole trusted origin,
+disabled forwarded-host inference (installed default), and production Secure,
+HttpOnly, SameSite=Lax host-scoped cookies. Caddy supplies one normalized XFF address
+for the installed auth IP/rate-limit reader. Application ports must remain private.
+
+Future Vercel/other-provider deployment can supply its own same-origin API routing,
+trusted ingress normalization and environment values. No NaCl domain, IP, API or
+ingress-mode dependency is added to Next/Hono/shared application source; Caddy is
+an infrastructure choice. Server-only `API_INTERNAL_ORIGIN`, public `BETTER_AUTH_URL`
+and database credentials remain environment-driven. This preserves application-level
+portability; it is **not** a tested Vercel deployment or a provider runtime adapter.
+
+For subsequent **future authorized** commands, select the reviewed mode in Bash
+without sourcing the env file; ensure its `WANGMAI_INGRESS_MODE` agrees:
+
+```bash
+read -r -p 'Reviewed ingress mode (direct-https or shared-gateway): ' INGRESS_MODE
+case "$INGRESS_MODE" in
+  direct-https) CADDY_CONFIG=/etc/caddy/Caddyfile ;;
+  shared-gateway) CADDY_CONFIG=/etc/caddy/Caddyfile.shared-gateway ;;
+  *) echo 'STOP: explicitly select a supported mode.' >&2; exit 1 ;;
+esac
+dc() { docker compose --project-name wangmai --env-file .env.production -f compose.yaml -f "compose.$INGRESS_MODE.yaml" "$@"; }
+```
+
+Sections 1–3 describe future operator work; direct public NAT/DNS/UFW/ACME examples
+apply **only to direct-https**. For the existing shared gateway, retain its public
+DNS/TLS mapping, use gateway-only origin rules, and never open origin 80/443 publicly.
+The historical Phase 6B local report (`docs/phase-6b-readiness.md`, preserved outside this PR) is preserved as recorded;
+its single-file Compose commands predate this explicit mode selection and must not
+be used for a Phase 6C release.
 
 ## 1. VM and storage
 
@@ -77,8 +200,8 @@ sudo docker version
 sudo docker compose version
 ```
 
-Use the Compose plugin (`docker compose`), not legacy `docker-compose`. The local
-smoke override requires Compose ≥2.24.4 for `!override`, which replaces rather than
+Use the Compose plugin (`docker compose`), not legacy `docker-compose`. The ingress-mode and local
+smoke overrides require Compose ≥2.24.4 for `!override`, which replaces rather than
 appends public ports. See [Compose merge rules](https://docs.docker.com/reference/compose-file/merge/).
 No host Node/npm is required in production; Python ≥3.11 runs the operator tools.
 The remaining commands assume approved Docker access as the deployment user.
@@ -150,12 +273,16 @@ Do not source the env file as a shell script. Protect backups of it outside Git.
 
 | Variable | Required production value |
 | --- | --- |
+| WANGMAI_INGRESS_MODE | Explicit `direct-https` or `shared-gateway`, matching the override |
 | WANGMAI_DOMAIN | One real DNS hostname, no scheme, path, or port |
 | BETTER_AUTH_URL | Exactly `https://YOUR_DOMAIN`, no trailing slash |
 | BETTER_AUTH_SECRET | Stable, random 32+ characters; also encrypts OAuth tokens |
 | GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET | Google OAuth Web application credentials |
-| POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB | Database initialization credentials; password 24+ characters |
-| DATABASE_URL | `postgresql://USER:URL_ENCODED_PASSWORD@postgres:5432/DB` |
+| POSTGRES_USER / POSTGRES_DB | Initialization administrator and dedicated database; not the runtime identity |
+| POSTGRES_RUNTIME_USER / POSTGRES_MIGRATION_USER | Distinct nonadministrative runtime and migration roles |
+| DATABASE_URL | Runtime identity only: `postgresql://RUNTIME:URL_ENCODED_PASSWORD@postgres:5432/DB` |
+| POSTGRES_ADMIN_PASSWORD_FILE / POSTGRES_RUNTIME_PASSWORD_FILE / POSTGRES_MIGRATION_PASSWORD_FILE | Protected files for explicit operator bootstrap only |
+| MIGRATION_DATABASE_URL_FILE | Protected migration connection file for one-shot migrator only |
 | WANGMAI_IMAGE_TAG | Full reviewed commit SHA, equal to RELEASE_SHA |
 | POSTGRES_IMAGE / CADDY_IMAGE | Tested official repository digests from the next step |
 
@@ -166,8 +293,7 @@ frontend `HOSTNAME=0.0.0.0`, frontend `PORT=3000`, and
 The frontend receives no database, Google, or signing credentials.
 
 Keep `BETTER_AUTH_SECRET` during recovery: changing it invalidates signatures and
-can make stored encrypted OAuth tokens unreadable. Initialization env changes do
-not rotate credentials in existing PostgreSQL volumes; plan credential rotation separately.
+can make stored encrypted OAuth tokens unreadable. Bootstrap refuses changed credentials; it does not rotate passwords. Plan credential rotation separately.
 
 ## 5. Google OAuth production setup — manual console action
 
@@ -201,10 +327,10 @@ docker image inspect --format '{{index .RepoDigests 0}}' postgres:18-alpine
 docker image inspect --format '{{index .RepoDigests 0}}' caddy:2-alpine
 # Put those exact postgres@sha256:... and caddy@sha256:... values in .env.production.
 ${EDITOR:-nano} .env.production
-dc() { docker compose --project-name wangmai --env-file .env.production -f compose.yaml "$@"; }
+# Use dc() and CADDY_CONFIG from the explicit mode selection in section 0.
 dc config --quiet
-python3 infra/deployment/ops.py preflight --env-file .env.production
-dc run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+python3 infra/deployment/ops.py preflight --ingress-mode "$INGRESS_MODE" --env-file .env.production
+dc run --rm --no-deps caddy caddy validate --config "$CADDY_CONFIG" --adapter caddyfile
 dc build --pull frontend backend
 docker image inspect --format '{{.Id}} {{.Config.User}}' "wangmai-frontend:$RELEASE_SHA" "wangmai-backend:$RELEASE_SHA"
 install -d -m 700 /srv/wangmai/releases
@@ -219,71 +345,40 @@ and the infrastructure digests for rollback. Node 24 base tags receive patches a
 time; retained images, rather than a later rebuild, are the rollback artifact.
 Scan/approve the resulting images under the operator's vulnerability policy.
 
-## 7. Database backup and migration
+## 7. Database bootstrap, least privilege, backup and migration
 
-The PostgreSQL 18 image is intentionally mounted at `/var/lib/postgresql`, including
-its versioned PGDATA child. Keep that volume and PostgreSQL major version unchanged.
-See [the official PostgreSQL image](https://hub.docker.com/_/postgres).
-Never run `down -v`, volume prune, `db:generate`, schema push, reset, or seed against production.
-The runtime database role currently also owns the schema (the existing architecture);
-it is not a separately provisioned least-privilege role. Compensating controls are the
-private network, no published DB port, limited host access, and protected credentials.
+Use the complete [PostgreSQL role security procedure](postgresql-role-security.md)
+for actual initialization, bootstrap, one-shot migration, runtime validation and
+backup commands. It supersedes the Phase 6A/6B shared-superuser workflow.
 
-For first installation:
+The initialization administrator owns the database. A separate non-superuser
+migrator owns the application/journal schemas and objects, with only the DDL powers
+required by Drizzle. The long-running API receives only runtime DATABASE_URL and
+its role name: CONNECT, public USAGE and CRUD on exactly seven application tables;
+no sequences, ownership, database/schema CREATE/TEMP or journal access. The API
+checks the live role contract before starting. No auth/schema migration files were
+rewritten, and startup never migrates or seeds.
 
-```bash
-dc up -d --wait postgres
-dc run --rm --no-deps backend node backend/dist/db/check.js
-# Explicit one-shot operation; startup does not run migrations.
-dc run --rm --no-deps backend node backend/dist/db/migrate.js
-dc exec -T postgres sh -eu -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) AS applied_migrations FROM drizzle.__drizzle_migrations"'
-```
+The base PostgreSQL service intentionally has no initialization password. On an
+approved confirmed-empty persistent volume, use the explicit `compose.database-init.yaml`
+override, then recreate only PostgreSQL from normal config to remove its secret
+mount/env. Run the explicit `bootstrap` and `migrator` tools from
+`compose.database-ops.yaml`; never run production migrations with `dc run backend`.
+Do not include either database override in the steady-state `dc()` wrapper.
 
-Expect three migrations for the Phase 5 baseline. Re-running the migrator safely skips
-applied migrations. Do not edit old SQL/journal files or run concurrent migration jobs.
-For an existing installation, stop writes and back up **before** migrating:
+Before touching an existing database, freeze writes and take a verified encrypted
+off-VM backup. Bootstrap refuses existing admin-owned application tables or unsafe
+roles rather than silently reassigning/demoting them. Rehearse the fresh-volume
+restore/cutover below. Do not delete/reset data, rotate credentials implicitly,
+run down -v/prune/schema push, or use an empty volume to hide an old installation.
+Keep the PostgreSQL 18 volume mounted at `/var/lib/postgresql` and protect its storage.
 
-```bash
-dc stop caddy frontend backend
-install -d -m 700 /srv/wangmai/backups
-python3 infra/deployment/ops.py backup --env-file .env.production --destination /srv/wangmai/backups
-read -r -p 'Absolute path of the completed .dump archive: ' BACKUP_ARCHIVE
-python3 infra/deployment/ops.py verify-backup --env-file .env.production --archive "$BACKUP_ARCHIVE"
-# Proceed only after comparing restored counts with the source and protecting an off-VM copy.
-dc run --rm --no-deps backend node backend/dist/db/migrate.js
-```
-
-The helper uses binary streams, exclusive backup filenames, private file permissions,
-a custom-format dump, archive listing, and a SHA-256 sidecar. Failures leave `.partial`
-files, never a reported complete backup. `verify-backup` checks the digest, restores
-into a **new container and volume with no network or published ports**, checks the
-migration journal and table counts, and stops it. It never resets/drops an existing DB.
-The test volume uses public fixture credentials: never promote it to production.
-
-Compare source counts during the same write freeze:
-
-```bash
-dc exec -T postgres sh -eu -c 'exec psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
-SELECT 'migrations', count(*) FROM drizzle.__drizzle_migrations
-UNION ALL SELECT 'users', count(*) FROM public."user"
-UNION ALL SELECT 'schedules', count(*) FROM public.schedule_entry
-UNION ALL SELECT 'exceptions', count(*) FROM public.schedule_exception
-UNION ALL SELECT 'preferences', count(*) FROM public.schedule_preference;
-SQL
-```
-
-For routine MVP backups, run the backup command at an operator-approved interval
-(initial recommendation: nightly and before each update), copy the dump/checksum to
-an encrypted off-VM destination, verify transfer checksums, and conduct restore drills.
-Protect the auth secret/env file separately and back up Caddy data/config volumes using
-the storage provider's consistent snapshot procedure. Dumps contain private data and
-sessions. Do not attach them to issues or store them in the repository.
-Keep the last known-good backup until a replacement has passed a restore drill.
-Define retention, responsible operator, alerting, and acceptable RPO/RTO before launch;
-nightly dumps imply up to a day of data loss. No automated backup job is installed here.
-If that loss window is unacceptable, require managed backups/WAL archiving and PITR
-before launch. See [PostgreSQL backup approaches](https://www.postgresql.org/docs/18/backup.html)
-and [custom dumps](https://www.postgresql.org/docs/18/app-pgdump.html).
+The helper still provides exclusive binary-safe custom dumps, checksums and an
+isolated restore drill. Restore now creates objects as the migration owner, reapplies
+only reviewed runtime grants and verifies live roles. Roles are not included in a
+database dump; initialize/bootstrap them before recovery. Retain independent auth
+secrets and release artifacts, assign off-VM backup ownership/retention and approved
+RPO/RTO, and compare source/restore counts during the same write freeze.
 
 ## 8. Start production — separate, explicitly authorized operation
 
@@ -291,7 +386,7 @@ Only after DNS, external ingress, Google configuration, backups, and release app
 are complete, an operator may run:
 
 ```bash
-python3 infra/deployment/ops.py preflight --env-file .env.production
+python3 infra/deployment/ops.py preflight --ingress-mode "$INGRESS_MODE" --env-file .env.production
 dc up -d --wait --no-build --pull never
 dc ps
 dc logs --tail=100 frontend backend postgres caddy
@@ -301,8 +396,8 @@ curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' "http
 curl --silent --show-error --head "http://$PUBLIC_DOMAIN/"
 ```
 
-Expect health 200, unauthenticated me 401, HTTP→HTTPS redirect, and a valid public
-certificate without `curl -k`. Check from an external network and inspect browser TLS.
+Expect health 200, unauthenticated me 401, public HTTP→HTTPS redirect (at the
+gateway in shared mode, at Caddy in direct mode), and a valid public certificate without `curl -k`. Check from an external network and inspect browser TLS.
 Only Caddy's ports should appear in `docker ps` / `docker inspect`; independently scan
 the public address for unintended 3000/4000/5432/2019 listeners.
 
@@ -384,15 +479,15 @@ to a fresh volume, or a reviewed forward fix. Never run guessed reverse SQL.
 
 ## 12. Database recovery into a fresh volume
 
-This is an incident procedure for a later explicitly authorized operation. Preserve
-the original volume and take a fresh backup if readable. Select a trusted archive
-and matching application/env artifacts. A restore loses writes after that snapshot;
-obtain owner approval for the loss window. Do not restore over the existing volume.
+This is a later, separately authorized incident/cutover procedure. Preserve the
+original volume, select a trusted verified backup and schema-compatible retained
+release, and approve any loss of writes after the backup. Never restore over data.
+
+Use these gates before the **complete** [owner-safe restore procedure](postgresql-role-security.md#backup-and-owner-safe-restore):
 
 ```bash
 dc stop caddy frontend backend
-read -r -p 'Absolute path of the trusted .dump archive: ' BACKUP_ARCHIVE
-python3 infra/deployment/ops.py verify-backup --env-file .env.production --archive "$BACKUP_ARCHIVE"
+read -r -p 'Absolute trusted dump archive: ' BACKUP_ARCHIVE
 read -r -p 'Unique NEW volume name (e.g. wangmai_recovery_20261030_1): ' RECOVERY_VOLUME
 [[ "$RECOVERY_VOLUME" =~ ^wangmai_recovery_[a-zA-Z0-9_]+$ ]]
 if docker volume inspect "$RECOVERY_VOLUME" >/dev/null 2>&1; then
@@ -406,65 +501,72 @@ volumes:
     name: $RECOVERY_VOLUME
 EOF
 chmod 600 compose.recovery.yaml
-rc() { docker compose --project-name wangmai --env-file .env.production -f compose.yaml -f compose.recovery.yaml "$@"; }
-rc config --quiet
-rc up -d --wait --no-deps --force-recreate postgres
-rc exec -T postgres sh -eu -c 'exec pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --exit-on-error --single-transaction --no-owner --no-privileges' < "$BACKUP_ARCHIVE"
-rc run --rm --no-deps backend node backend/dist/db/check.js
-# Verify restored counts/journal. Select the schema-compatible retained application images.
-rc up -d --wait --no-build --pull never
 ```
 
-Keep using the recovery override for **every** subsequent command, backup and update:
-the default `dc` without the override would otherwise select the old volume when
-recreating PostgreSQL. Record this mapping in the incident/release handoff and redefine
-`dc` to use both files. Operator helper commands must include
-`--recovery-file compose.recovery.yaml`, for example:
-
-```bash
-python3 infra/deployment/ops.py preflight --env-file .env.production --recovery-file compose.recovery.yaml
-python3 infra/deployment/ops.py backup --env-file .env.production --recovery-file compose.recovery.yaml --destination /srv/wangmai/backups
-```
-
-Never remove either volume during incident response. Repeat full account acceptance
-before reopening traffic. The local recovery override is ignored by Git; protect an
-off-VM copy with the deployment's env and release records.
+Do not start the empty target with base Compose or use the old raw administrative
+pg_restore block. The linked procedure supplies `rinit`, `rc` and `ro` wrappers:
+initialize the new volume, remove its initialization mount, bootstrap target roles,
+run the guarded `ops.py restore` as migration owner, apply `--grant-only`, then
+verify runtime permissions and data/journal. Startup is a separate approval gate.
+Every subsequent command (including backup/helper commands) must keep the selected
+ingress and recovery overrides. Preserve both volumes and a protected off-VM copy
+of the exact mapping; helpers require `--recovery-file compose.recovery.yaml`.
 
 ## 13. Local verification without ACME
 
-These commands use only public fixture values and the separate `wangmai-smoke` project.
-Do not combine the development Compose file with production. Do not use the smoke
-credentials, HTTP Caddyfile, or `.invalid` auth origin for real Google login.
+For the Phase 6C.1 proxy contract smoke, first confirm a **local** Docker socket
+context (`npipe://` on Windows or `unix://` on Linux) and existing local images.
+This smoke never pulls/builds an image, joins an application network, publishes a
+host port, mounts a database volume or connects to a production endpoint. Substitute
+an existing local Node 24 image if `wangmai-backend:phase6a-smoke` is unavailable:
 
 ```bash
-smoke() { docker compose --project-name wangmai-smoke --env-file infra/smoke/.env.example -f compose.yaml -f infra/smoke/compose.yaml "$@"; }
-smoke config --quiet
-smoke build frontend backend
-smoke up -d --wait postgres
-smoke run --rm --no-deps backend node backend/dist/db/migrate.js
-smoke up -d --wait --no-build
-curl --fail http://127.0.0.1:8088/api/health
-# On a development checkout with Node 24, exercise routing, privacy and recreation:
-node infra/smoke/verify.mjs
-python3 infra/deployment/ops.py backup --local-smoke --env-file infra/smoke/.env.example --destination backups/phase6a
-# Use the actual archive path printed by backup:
-python3 infra/deployment/ops.py verify-backup --local-smoke --env-file infra/smoke/.env.example --archive /ABSOLUTE/PATH/TO/ARCHIVE.dump
-smoke stop
+docker context show
+docker context inspect --format '{{.Endpoints.docker.Host}}'
+docker image inspect caddy:2-alpine wangmai-backend:phase6a-smoke --format '{{.Id}}'
+python3 -B -m unittest discover -s infra/deployment -p 'test_*.py' -v
+python3 -B infra/deployment/proxy_smoke.py --caddy-image caddy:2-alpine --node-image wangmai-backend:phase6a-smoke
+# Optional: current role-aware backend/frontend images and fixture-only migrations.
+# Build these local smoke tags first; never use them as production release tags.
+python3 -B infra/deployment/proxy_smoke.py --node-image wangmai-backend:phase6c-smoke --frontend-image wangmai-frontend:phase6c-smoke
 ```
 
-The override replaces public port bindings with `127.0.0.1:8088:80` and disables
-automatic HTTPS. It cannot request public certificates. Containers can be recreated
-without losing the project-scoped PostgreSQL volume. Stop it after testing; keep its
-volume and backup evidence until reviewed. Use `python3 -m unittest discover -s
-infra/deployment -p 'test_*.py' -v` for deployment guard tests.
+The tool creates a uniquely named **internal** Docker network, synthetic upstreams
+on 3000/4000, a gateway client and two Caddy instances. It derives trust **only for
+that disposable test peer**, never a production default. It validates both exact
+production configs without starting them; shared mode runs its actual config and
+startup guard, while direct mode uses the same routes with a local certificate issuer.
+The client verifies the generated local CA (no TLS verification bypass). Tests cover
+routes, callback/query preservation, cookies, no origin redirects, direct HTTPS
+redirects, header spoofing and untrusted peer rejection, blocked startup modes,
+and upstream failure logs. Only its own disposable containers/anonymous Caddy test
+volumes/network are removed afterward. It reads no production env file or user data.
+The optional application pass requires the compiled Wangmai backend image as
+`--node-image`, the frontend standalone image, and an existing `postgres:18-alpine`
+(or `--postgres-image`). It starts an empty, uniquely isolated PostgreSQL container
+with public fixture credentials and its own anonymous disposable volume, then checks
+real health/session routes, login redirects and fixed auth/cookie options. It explicitly
+bootstraps separate fixture roles and runs local migrations before API startup; it
+performs no Google exchange. All test containers and their own
+anonymous volumes are removed; no existing or named database volume is attached.
+
+For current database/app validation use the disposable [Phase 6C.2 role rehearsal](postgresql-role-security.md#local-rehearsal-and-remaining-gates).
+It never loads a production environment, runs existing integration tests in its
+own cluster, and proves runtime permissions plus backup/restore ownership. Historical
+`infra/smoke/verify.mjs` and the Phase 6A stack are retained as evidence for their old
+images; their shared-superuser initialization/migration commands must not be used
+with current production images. Do not reuse existing smoke volumes to bypass the
+role model or weaken checks to make them start.
 
 ## Remaining launch blockers
 
-- Approved real domain and verified public/NAT/IPv6 routing, CloudStack rules, storage retention.
+- Shared-gateway security contract: exact sources, sanitized headers, source restrictions and confidential/authenticated origin transport are NOT VERIFIED.
+- Approved mode/domain and verified ingress/IPv6 routing, CloudStack rules, durable storage.
+- Least-privilege implementation is locally verified; live VM provisioning/cutover and production runtime verification remain pending.
 - Approved production Google OAuth client/consent settings and manually entered secrets.
 - Reviewed immutable release, image vulnerability approval, and pinned infrastructure digests.
 - Encrypted off-VM backup destination, retention/operator ownership, restore evidence and RPO/RTO approval.
 - Actual VM capacity/OS verification, public HTTPS checks, and legitimate multi-account production acceptance.
 
 No CloudStack connection, deployment, DNS/OAuth changes, public certificate request,
-or automatic CI/CD is performed by Phase 6A.
+or automatic deployment is performed by Phase 6C.2.

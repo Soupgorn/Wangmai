@@ -1,0 +1,14 @@
+# HTTP origin only. BLOCKED until the gateway security contract is verified.
+# Compose >=2.24.4: replace ports; never inherit public TLS listeners.
+services:
+  caddy:
+    command: [sh, /etc/caddy/start.sh, shared-gateway]
+    environment:
+      WANGMAI_SHARED_GATEWAY_CONFIG: selected
+      WANGMAI_GATEWAY_CIDRS: ${WANGMAI_GATEWAY_CIDRS:?Set only administrator-verified gateway source CIDRs}
+      WANGMAI_GATEWAY_HEADERS_VERIFIED: ${WANGMAI_GATEWAY_HEADERS_VERIFIED:?Gateway header contract must be verified}
+      WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED: ${WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED:?Origin confidentiality must be verified}
+      WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED: ${WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED:?Origin source restrictions must be verified}
+      WANGMAI_GATEWAY_CONTRACT_REFERENCE: ${WANGMAI_GATEWAY_CONTRACT_REFERENCE:?Record the reviewed gateway security evidence reference}
+    ports: !override
+      - "${WANGMAI_ORIGIN_BIND_IP:?Set the verified private origin interface IP}:80:80"

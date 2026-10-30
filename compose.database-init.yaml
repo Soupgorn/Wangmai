@@ -1,0 +1,10 @@
+# FIRST INITIALIZATION of a confirmed empty volume only, including an approved
+# fresh recovery target. Never include this file in steady-state operations.
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets: [postgres_admin_password]
+secrets:
+  postgres_admin_password:
+    file: ${POSTGRES_ADMIN_PASSWORD_FILE:?Set the protected initialization password file}

@@ -1,0 +1,10 @@
+# Explicit public Caddy TLS mode. Combine with compose.yaml, never shared-gateway.
+services:
+  caddy:
+    environment:
+      WANGMAI_DIRECT_HTTPS_CONFIG: selected
+    command: [sh, /etc/caddy/start.sh, direct-https]
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"

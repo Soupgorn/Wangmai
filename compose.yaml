@@ -47,6 +47,7 @@ services:
       HOST: 0.0.0.0
       PORT: 4000
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL with host postgres for production}
+      DATABASE_RUNTIME_ROLE: ${POSTGRES_RUNTIME_USER:?Set the dedicated runtime role}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set the public HTTPS origin}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set a random auth secret}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Set Google OAuth client ID}
@@ -69,13 +70,17 @@ services:
     stop_grace_period: 60s
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:?Set the dedicated runtime role}
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?Set the dedicated migration role}
+    # Empty PGDATA fails without the explicit database-init override. Steady-state
+    # PostgreSQL has no initialization password/file in its service configuration.
     volumes:
       - postgres_data:/var/lib/postgresql
     networks: [database]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      # TCP avoids marking the image's temporary socket-only init server healthy.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -88,12 +93,11 @@ services:
     stop_grace_period: 30s
     environment:
       WANGMAI_DOMAIN: ${WANGMAI_DOMAIN:?Set the real public DNS hostname}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      WANGMAI_INGRESS_MODE: ${WANGMAI_INGRESS_MODE:?Explicitly select direct-https or shared-gateway and its Compose override}
+    # The base alone cannot start ingress. Select exactly one reviewed mode override.
+    command: [sh, /etc/caddy/start.sh, unselected]
     volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

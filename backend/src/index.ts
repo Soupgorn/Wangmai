@@ -3,14 +3,18 @@ import { createApp } from "./app.js";
 import { createAuth } from "./auth/auth.js";
 import { loadEnv } from "./config/env.js";
 import { createDatabase } from "./db/client.js";
+import { assertRuntimeRole } from "./db/role-model.js";
 
 let env;
 try { env = loadEnv(); }
 catch (error) { console.error(error instanceof Error ? error.message : "Invalid backend configuration"); process.exit(1); }
 const { db, pool } = createDatabase(env);
-try { await pool.query("select 1"); }
+try {
+  await pool.query("select 1");
+  if (env.NODE_ENV === "production") await assertRuntimeRole(pool, env.DATABASE_RUNTIME_ROLE!);
+}
 catch {
-  console.error("PostgreSQL unavailable. Check configuration and start the development container.");
+  console.error("PostgreSQL unavailable or runtime privilege contract failed. Check database readiness and credentials.");
   await pool.end();
   process.exit(1);
 }

@@ -3,7 +3,8 @@
 name: wangmai-smoke
 services:
   caddy:
+    command: [caddy, run, --config, /etc/caddy/smoke.Caddyfile, --adapter, caddyfile]
     ports: !override
       - "127.0.0.1:8088:80"
     volumes:
-      - ./infra/smoke/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/smoke/Caddyfile:/etc/caddy/smoke.Caddyfile:ro

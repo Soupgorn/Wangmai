@@ -1,18 +1,13 @@
-# Starting this production configuration enables public ACME. Follow the runbook first.
+# Direct public HTTPS only; startup enables ACME. Validate without running first.
+{
+	# Proxy error logs can include request URIs (OAuth codes). Keep operational logs.
+	log default {
+		exclude http.log.access http.log.error
+	}
+}
+import routes.caddy
 {$WANGMAI_DOMAIN} {
-	header {
-		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
-		-Server
-	}
-	@api path /api /api/*
-	handle @api {
-		# Preserve /api, including the Google OAuth callback. Do not log request URLs:
-		# OAuth query strings can contain authorization codes.
-		reverse_proxy backend:4000
-	}
-
-	handle {
-		reverse_proxy frontend:3000
-	}
+	vars public_scheme https
+	# No trusted proxies: forwarded client headers are never authoritative here.
+	import wangmai_routes
 }

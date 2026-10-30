@@ -1,0 +1,32 @@
+(wangmai_forwarding) {
+	header_up Host {hostport}
+	header_up X-Forwarded-Host {hostport}
+	header_up X-Forwarded-Proto {http.vars.public_scheme}
+	# One normalized address, parsed before request_header removes incoming headers.
+	header_up X-Forwarded-For {client_ip}
+}
+(wangmai_routes) {
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	# Strip alternative identity/scheme headers before either upstream sees them.
+	request_header -Forwarded
+	request_header -X-Forwarded-*
+	request_header -X-Real-IP
+	request_header -CF-Connecting-IP
+	request_header -True-Client-IP
+	@api path /api /api/*
+	handle @api {
+		# No handle_path, rewrite, redirect or access logs: preserve callback and query.
+		reverse_proxy backend:4000 {
+			import wangmai_forwarding
+		}
+	}
+	handle {
+		reverse_proxy frontend:3000 {
+			import wangmai_forwarding
+		}
+	}
+}
