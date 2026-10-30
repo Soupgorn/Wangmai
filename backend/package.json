@@ -12,7 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=../.env src/db/migrate.ts",
     "db:check": "tsx --env-file-if-exists=../.env src/db/check.ts",
-    "test": "tsx --test tests/unit.test.ts",
+    "test": "tsx --test tests/unit.test.ts tests/operations.test.ts",
     "test:integration": "tsx --env-file-if-exists=../.env --test tests/*.integration.test.ts"
   },
   "dependencies": {

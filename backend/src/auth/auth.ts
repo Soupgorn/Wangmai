@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { verifyGoogleIdToken, type GoogleProfile } from "better-auth/social-providers";
 import type { Environment } from "../config/env.js";
 import type { Database } from "../db/client.js";
 import * as schema from "../db/schema.js";
@@ -22,6 +23,16 @@ export function createAuth(env: Environment, db: Database) {
         disableIdTokenSignIn: true,
         includeGrantedScopes: false,
         accessType: "online",
+        // The installed provider decodes redirect-flow ID tokens by default.
+        // Verify before any claims reach account linking or database persistence.
+        async getUserInfo(tokens) {
+          if (!tokens.idToken) return null;
+          const profile = await verifyGoogleIdToken({ token: tokens.idToken, audience: env.GOOGLE_CLIENT_ID! });
+          if (!profile || typeof profile.sub !== "string" || typeof profile.email !== "string" ||
+            typeof profile.name !== "string" || typeof profile.email_verified !== "boolean") return null;
+          return { user: { name: profile.name, email: profile.email, emailVerified: profile.email_verified,
+            ...(typeof profile.picture === "string" ? { image: profile.picture } : {}) }, data: profile as unknown as GoogleProfile };
+        },
       },
     } : {},
     session: {
@@ -35,6 +46,9 @@ export function createAuth(env: Environment, db: Database) {
       accountLinking: { enabled: true, trustedProviders: ["google"] },
     },
     advanced: {
+      trustedProxyHeaders: false,
+      disableOriginCheck: false,
+      disableCSRFCheck: false,
       useSecureCookies: env.NODE_ENV === "production",
       defaultCookieAttributes: { httpOnly: true, sameSite: "lax", path: "/" },
       // The fixed public baseURL is authoritative; never trust arbitrary forwarded hosts.

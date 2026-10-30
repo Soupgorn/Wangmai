@@ -9,7 +9,7 @@
     "start": "next start --hostname 127.0.0.1 --port 3000",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:unit": "tsx --test src/features/core/__tests__/*.test.ts",
+    "test:unit": "tsx --test src/features/core/__tests__/*.test.ts src/lib/__tests__/*.test.ts",
     "test:e2e": "tsx ../backend/tests/run-browser-tests.ts"
   },
   "dependencies": {

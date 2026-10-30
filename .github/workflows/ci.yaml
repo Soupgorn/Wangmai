@@ -10,7 +10,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -32,3 +32,12 @@ jobs:
       - run: docker pull postgres:18-alpine
       - run: python3 -u -B infra/deployment/role_smoke.py
       - run: docker compose --env-file .env.example -f compose.dev.yaml config --quiet
+      - run: docker pull caddy:2-alpine
+      - name: Build production application images (local test tags only)
+        run: |
+          docker build --build-arg SOURCE_COMMIT="$GITHUB_SHA" -f backend/Dockerfile -t wangmai-backend:ci-test .
+          docker build --build-arg SOURCE_COMMIT="$GITHUB_SHA" -f frontend/Dockerfile -t wangmai-frontend:ci-test .
+      - name: Both ingress modes and forwarded-header defenses
+        run: python3 -u -B infra/deployment/proxy_smoke.py --node-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test
+      - name: Private production Compose simulation with mock Google provider
+        run: python3 -u -B infra/deployment/production_smoke.py --backend-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test

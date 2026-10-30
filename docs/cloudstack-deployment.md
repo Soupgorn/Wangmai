@@ -331,18 +331,25 @@ ${EDITOR:-nano} .env.production
 dc config --quiet
 python3 infra/deployment/ops.py preflight --ingress-mode "$INGRESS_MODE" --env-file .env.production
 dc run --rm --no-deps caddy caddy validate --config "$CADDY_CONFIG" --adapter caddyfile
-dc build --pull frontend backend
-docker image inspect --format '{{.Id}} {{.Config.User}}' "wangmai-frontend:$RELEASE_SHA" "wangmai-backend:$RELEASE_SHA"
 install -d -m 700 /srv/wangmai/releases
-docker image save -o "/srv/wangmai/releases/$RELEASE_SHA.tar" "wangmai-frontend:$RELEASE_SHA" "wangmai-backend:$RELEASE_SHA"
-sha256sum "/srv/wangmai/releases/$RELEASE_SHA.tar" > "/srv/wangmai/releases/$RELEASE_SHA.tar.sha256"
+# Build in a clean approved checkout on the approved build host, without secrets.
+# Select a reviewed Node 24 bookworm-slim digest, never a mutable tag here.
+read -r -p 'Approved node:24-bookworm-slim@sha256:... reference: ' NODE_IMAGE
+python3 -B infra/deployment/release.py build --commit "$RELEASE_SHA" --node-image "$NODE_IMAGE" --output "/srv/wangmai/releases/$RELEASE_SHA"
+python3 -B infra/deployment/release.py verify "/srv/wangmai/releases/$RELEASE_SHA"
 ```
 
 `caddy validate` checks configuration without starting the HTTPS server or obtaining
 certificates. Do not use `caddy run` for validation. Release tags must never be rebuilt
-or overwritten after acceptance. Retain archives, recorded image IDs, exact env files,
-and the infrastructure digests for rollback. Node 24 base tags receive patches at build
-time; retained images, rather than a later rebuild, are the rollback artifact.
+or overwritten after acceptance. The helper refuses dirty source and existing release
+tags/output, builds a tracked-only Git archive, and records source/base/lockfile/migration
+hashes, local image IDs, platform and OCI source labels in `release.json`. Local builds
+have no registry RepoDigest; do not invent one. Retain `source.tar`, `images.tar` and
+the reviewed manifest outside the checkout; protect them against modification.
+Checksums detect corruption, not a malicious replacement of both archive and manifest.
+Retain protected env files separately, never in images or public release artifacts.
+Pinned build inputs support repeatability; exact byte-for-byte rebuilds are not claimed.
+Retained image content, rather than a later rebuild, is the rollback artifact.
 Scan/approve the resulting images under the operator's vulnerability policy.
 
 ## 7. Database bootstrap, least privilege, backup and migration
@@ -392,6 +399,8 @@ dc ps
 dc logs --tail=100 frontend backend postgres caddy
 read -r -p 'Verified public hostname: ' PUBLIC_DOMAIN
 curl --fail --silent --show-error "https://$PUBLIC_DOMAIN/api/health"
+curl --fail --silent --show-error "https://$PUBLIC_DOMAIN/api/ready"
+curl --fail --silent --show-error "https://$PUBLIC_DOMAIN/health/ready"
 curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' "https://$PUBLIC_DOMAIN/api/v1/me"
 curl --silent --show-error --head "http://$PUBLIC_DOMAIN/"
 ```
@@ -401,8 +410,11 @@ gateway in shared mode, at Caddy in direct mode), and a valid public certificate
 Only Caddy's ports should appear in `docker ps` / `docker inspect`; independently scan
 the public address for unintended 3000/4000/5432/2019 listeners.
 
-Health checks are process checks: `/api/health` does not prove DB/schema readiness,
-and Caddy's loopback admin check does not prove public TLS reachability. The DB check,
+`/api/health` is process liveness and survives database outages. Docker uses
+`/api/ready` (bounded DB probe, 503 on failure) and frontend `/health/ready`
+(checks the internal API readiness without cookies). Frontend `/` is an existing
+public process/rendering check. Readiness returns only status, with no cache.
+Caddy's loopback admin check does not prove public TLS reachability. The DB check,
 migration journal, API authorization tests, and manual account checks remain required.
 `depends_on` gates initial startup, not automatic recovery on later health failures.
 Restart policies restart exited processes; they do not restart merely unhealthy ones.
@@ -449,7 +461,7 @@ For each update, review code/lockfile/migrations and test images before the wind
 Never `git pull` into a dirty release checkout. Stop if unexpected changes appear.
 
 1. Record current commit, env file (encrypted/private copy), infrastructure digests and
-   frontend/backend image IDs. Retain `OLD_SHA.tar` and its checksum off the VM.
+   frontend/backend image IDs. Retain the old release directory and its manifest off the VM.
 2. Fetch and detach at the approved new SHA using the checkout checks above. Set
    `WANGMAI_IMAGE_TAG` to that SHA; keep the existing auth/database secrets and domain.
 3. Build/pin/validate as in step 6. Do not move infrastructure major versions implicitly.
@@ -463,8 +475,10 @@ load the retained archive, and restore the old code/config and image tag. Do not
 dc stop caddy frontend backend
 read -r -p 'Previous reviewed full commit SHA: ' OLD_SHA
 test "${#OLD_SHA}" -eq 40
-sha256sum -c "/srv/wangmai/releases/$OLD_SHA.tar.sha256"
-docker image load -i "/srv/wangmai/releases/$OLD_SHA.tar"
+# Independently compare images.tar/source.tar hashes with the approved manifest.
+# Loading is an explicit future operator action; the release helper never loads.
+docker image load -i "/srv/wangmai/releases/$OLD_SHA/images.tar"
+python3 -B infra/deployment/release.py verify "/srv/wangmai/releases/$OLD_SHA"
 git switch --detach "$OLD_SHA"
 # Restore that release's protected env file; preserve the same DB and auth secrets.
 ${EDITOR:-nano} .env.production
@@ -559,6 +573,9 @@ with current production images. Do not reuse existing smoke volumes to bypass th
 role model or weaken checks to make them start.
 
 ## Remaining launch blockers
+
+See [Phase 6D.2 application readiness](phase-6d2-app-readiness.md) for current
+health, auth verification, release and isolated production simulation commands.
 
 - Shared-gateway security contract: exact sources, sanitized headers, source restrictions and confidential/authenticated origin transport are NOT VERIFIED.
 - Approved mode/domain and verified ingress/IPv6 routing, CloudStack rules, durable storage.

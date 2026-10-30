@@ -33,7 +33,7 @@ def main():
     parser.add_argument("--backend-image", help="Optional locally built current backend image for ops.py isolated restore drill")
     args = parser.parse_args()
     endpoint = run(["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"])
-    if not endpoint.startswith(("npipe://", "unix://")):
+    if os.environ.get("DOCKER_HOST") or not endpoint.startswith(("npipe://", "unix://")):
         raise RuntimeError("An explicitly reviewed local Docker socket is required")
     run(["docker", "image", "inspect", args.postgres_image, "--format", "{{.Id}}"])
     if args.backend_image:
