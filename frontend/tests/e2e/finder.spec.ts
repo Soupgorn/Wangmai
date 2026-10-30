@@ -109,7 +109,7 @@ test("calendar click and keyboard selection cross months and years without selec
   await expect(page.getByLabel("Start Date", { exact: true })).toHaveValue("2026-12-30");
 });
 
-test("invalid ranges clear old results; empty matches and DST errors remain distinct", async ({ page }) => {
+test("invalid ranges clear old results; shared gaps are free and DST errors remain distinct", async ({ page }) => {
   await range(page);
   await page.getByLabel("End Date", { exact: true }).fill("2026-11-29");
   await expect(page.locator("#query-error")).toContainText("at most 31");
@@ -120,7 +120,8 @@ test("invalid ranges clear old results; empty matches and DST errors remain dist
   await page.getByLabel("End Date", { exact: true }).fill("2026-11-02");
   await page.getByLabel("From", { exact: true }).fill("07:00");
   await page.getByLabel("Until", { exact: true }).fill("08:00");
-  await expect(page.getByText("A little change might make room.")).toBeVisible();
+  await expect(page.getByTestId("available-count")).toContainText("5 people");
+  await expect(page.getByTestId("person-jamie")).toBeVisible();
   await expect(page.locator("#query-error")).toHaveCount(0);
   await page.getByLabel("Start Date", { exact: true }).fill("2026-11-01");
   await page.getByLabel("End Date", { exact: true }).fill("2026-11-01");

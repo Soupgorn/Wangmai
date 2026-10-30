@@ -57,7 +57,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
   }
   function open(date: string, start: string, end: string, returnFocus: HTMLElement, weekly = false) {
     setNotice("");
-    showEditor({ date, returnFocus, draft: { title: defaultBlockTitles.available, kind: "available", start, end, timing: weekly ? { type: "weekly", weekday: dateValue(date).dayOfWeek } : { type: "date", date } } });
+    showEditor({ date, returnFocus, draft: { title: defaultBlockTitles.busy, kind: "busy", start, end, timing: weekly ? { type: "weekly", weekday: dateValue(date).dayOfWeek } : { type: "date", date } } });
   }
   function pointerSlot(event: PointerEvent<HTMLButtonElement>) {
     const top = event.currentTarget.parentElement?.getBoundingClientRect().top ?? event.clientY;
@@ -89,7 +89,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
       <div><h1>A week that feels like you.</h1><p>Make room for plans, people, and a little me time.</p></div>
       <Button ref={addButton} onClick={(event) => open(selected, "09:00", "10:00", event.currentTarget, true)}><Plus aria-hidden="true" />Add time</Button>
     </div>
-    <div className={styles.hint}><MousePointer2 aria-hidden="true" /><span>{view === "month" ? "Choose dates to add time together, or open a date to edit its blocks. Your titles stay private." : "Click a time slot or drag to add a block. Use Add time for a weekly routine. Your titles stay private."}</span></div>
+    <div className={styles.hint}><MousePointer2 aria-hidden="true" /><span>{view === "month" ? "Choose dates to mark unavailable together, or open a date to edit its blocks." : "Click or drag to mark unavailable time. Use Add time for a weekly routine."} When sharing, the remaining time is available. Previous Available markers are preserved but have no effect. Your titles stay private.</span></div>
     {mode === "persistent" && dates.some((date) => own.some((block) => matchesDate(block, date) && !matchesDate(block, date, snapshot.profile.timezone))) && <p role="status" className="mb-3 text-xs text-muted-foreground">A recurring time is skipped or repeated by daylight saving in this view. That occurrence is not shown; choose a dated replacement at a valid time.</p>}
     <Card className="min-w-0 overflow-hidden">
       <div className={styles.toolbar}>
@@ -104,7 +104,7 @@ function ScheduleView({ snapshot }: { snapshot: CoreSnapshot }) {
           <input type="date" aria-label="Jump to date" value={selected} onChange={(event) => { if (event.target.value) setSelected(event.target.value); }} className={cn(styles.input, "!w-[170px] !py-2")} />
         </div>
       </div>
-      {own.length === 0 && <p className="border-b p-4 text-xs text-muted-foreground">A little room to begin. Add your first available or unavailable block.</p>}
+      {own.length === 0 && <p className="border-b p-4 text-xs text-muted-foreground">A little room to begin. Add only the times you are unavailable. When sharing is on, the rest is available.</p>}
       <div hidden={view === "month"}><div ref={scroll} className={styles.calendarScroll} aria-label="Scrollable calendar">
         <div key={`${view}:${first}`} className={cn(styles.calendarInner, "motion-week", view === "day" && styles.dayView)}>
           <div className={styles.dayHeaders} style={{ gridTemplateColumns: gridColumns }}><span aria-hidden="true" />{dates.map((date) => <button type="button" key={date} className={cn(date === selected && styles.selectedDay)} onClick={() => setSelected(date)} aria-label={`Select ${formatDate(date, { weekday: "long", day: "numeric", month: "long" })}`} aria-pressed={date === selected}><span>{formatDate(date, { weekday: "short" })}</span><strong>{dateValue(date).day}</strong></button>)}</div>

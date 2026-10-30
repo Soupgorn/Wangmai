@@ -60,7 +60,7 @@ test("monthly bulk saves persist and a failed second write retains only unfinish
   await expect(page.locator('[data-date="2026-10-29"]')).toHaveAttribute("aria-label", /1 time blocks, personal/);
   await page.screenshot({ path: testInfo.outputPath("persisted-month.png"), fullPage: true, animations: "disabled" });
   await page.goto("/availability");
-  await expect(page.getByText("Only people who choose to share appear here. Event details and email addresses stay private.")).toBeVisible();
+  await expect(page.getByText("Only other people who choose to share appear here. Time is available unless they mark it unavailable. Event details and email addresses stay private.")).toBeVisible();
   await expect(page.getByTestId("person-jamie")).toHaveCount(0);
 });
 
@@ -94,7 +94,7 @@ test("weekly CRUD and dated overrides survive refresh, logout and a new session"
   await dialog.getByLabel("Start time").fill("18:00"); await dialog.getByLabel("End time").fill("19:00");
   await dialog.getByRole("button", { name: "Add block", exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  const weekly = page.getByRole("button", { name: /Edit Persisted weekly reading, available, 18:00 to 19:00, repeats weekly/ });
+  const weekly = page.getByRole("button", { name: /Edit Persisted weekly reading, unavailable, 18:00 to 19:00, repeats weekly/ });
   await expect(weekly).toBeVisible();
   await expect(page.getByText("Saved to your account.", { exact: true })).toBeVisible();
   await page.reload(); await expect(weekly).toBeVisible();
@@ -106,14 +106,14 @@ test("weekly CRUD and dated overrides survive refresh, logout and a new session"
   await dialog.getByLabel("Start time").fill("20:00"); await dialog.getByLabel("End time").fill("21:00");
   await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(weekly).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Edit Only this Monday, available, 20:00 to 21:00, this date only/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Edit Only this Monday, unavailable, 20:00 to 21:00, this date only/ })).toBeVisible();
   await page.getByRole("button", { name: "Next week", exact: true }).click(); await expect(weekly).toBeVisible();
   await weekly.click();
   await dialog.getByRole("button", { name: "Restore occurrence on 2026-11-02", exact: true }).click();
   await page.getByRole("button", { name: "Previous week", exact: true }).click(); await expect(weekly).toBeVisible();
   await weekly.click(); await dialog.getByLabel("Title", { exact: true }).fill("Renamed saved block");
   await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
-  const renamed = page.getByRole("button", { name: /Edit Renamed saved block, available/ }); await expect(renamed).toBeVisible();
+  const renamed = page.getByRole("button", { name: /Edit Renamed saved block, unavailable/ }); await expect(renamed).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Log out", exact: true }).click(); await expect(page).toHaveURL(/\/login$/);
   expect((await context.request.get("/api/v1/me/schedule")).status()).toBe(401);
@@ -159,11 +159,11 @@ test("lost create response is retryable without a duplicate or false success; st
   expect((await schedule(context)).blocks.filter((block) => block.title === "Exactly once")).toHaveLength(1);
   const before = await schedule(context);
   const changed = await context.request.patch("/api/v1/me/schedule/preferences", { headers: { origin: env.BETTER_AUTH_URL, "If-Match": `"${before.revision}"` }, data: { timezone: "UTC" } }); expect(changed.status()).toBe(200);
-  await page.getByRole("button", { name: /Edit Exactly once, available/ }).click();
+  await page.getByRole("button", { name: /Edit Exactly once, unavailable/ }).click();
   await dialog.getByLabel("Title", { exact: true }).fill("Stale title"); await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText("another tab");
   await dialog.getByRole("button", { name: "Reload saved schedule", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Edit Exactly once, available/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Edit Exactly once, unavailable/ })).toBeVisible();
 });
 
 test("timezone settings persist and both public preview and authenticated finder remain isolated", async ({ page, context, browser }) => {
@@ -176,7 +176,7 @@ test("timezone settings persist and both public preview and authenticated finder
   await expect(page.getByText("Preferences saved to your account.", { exact: true })).toBeVisible();
   await page.reload(); await expect(page.getByLabel("Timezone", { exact: true })).toHaveValue("UTC");
   await page.getByRole("link", { name: "Who’s free?", exact: true }).click();
-  await expect(page.getByText("Only people who choose to share appear here. Event details and email addresses stay private.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Only other people who choose to share appear here. Time is available unless they mark it unavailable. Event details and email addresses stay private.", { exact: true })).toBeVisible();
   const before = await schedule(context); const mutations: string[] = [];
   page.on("request", (request) => { if (request.method() !== "GET" && request.url().includes("/api/v1/me/")) mutations.push(request.url()); });
   await page.goto("/preview/schedule"); await page.getByRole("button", { name: "Add time", exact: true }).click();

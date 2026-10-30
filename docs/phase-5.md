@@ -1,5 +1,9 @@
 # Phase 5 — real multi-user availability
 
+Historical report: its explicit Available-coverage model has been superseded by the
+[Busy-only availability model](busy-only-availability.md). The test and acceptance
+results below describe the earlier implementation, not the current semantics.
+
 ## Baseline and scope
 
 Started from a clean `feat/availability-backend` at `761287d`, the merged PR #4 main baseline. Fetched `origin/main` and verified it was an ancestor of the current branch. Phase 4 persisted schedules, monthly/bulk editing, recurrence exceptions, the unified date selector, and the current result-summary design were present. Existing Better Auth configuration, Drizzle tables, two applied migrations, preference endpoints, preview evaluator and repository adapters were inspected before editing.

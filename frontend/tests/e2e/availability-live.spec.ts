@@ -44,6 +44,42 @@ async function dates(page: Page) {
   await page.locator('[data-picker-date="2026-10-29"]').click(); await page.locator('[data-picker-date="2026-10-31"]').click();
 }
 
+test("Busy-only UI shares empty schedules, persists conflicts, and keeps opt-out private", async ({ page, context, browser }) => {
+  const viewer = await actor(context, "Busy-only viewer fixture");
+  const owner = await extra(browser, "Busy-only owner fixture");
+  expect((await read(owner)).shareAvailability).toBe(false);
+  const ownerPage = await owner.context.newPage();
+  await ownerPage.goto("/settings");
+  const sharing = ownerPage.getByRole("switch", { name: "Share my availability" });
+  await sharing.click(); await ownerPage.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(ownerPage.getByText("Preferences saved to your account.", { exact: true })).toBeVisible();
+  await page.goto("/availability");
+  await expect(page.getByTestId(`person-${owner.user.id}`)).toHaveAttribute("data-state", "available");
+  expect((await read(owner)).blocks).toEqual([]);
+  await ownerPage.goto("/schedule"); await ownerPage.getByRole("button", { name: "Add time", exact: true }).click();
+  const dialog = ownerPage.getByRole("dialog");
+  await expect(dialog.getByRole("radio", { name: "Unavailable", exact: true })).toBeChecked();
+  await expect(dialog.getByRole("radio", { name: "Available", exact: true })).toHaveCount(0);
+  await dialog.getByLabel("Repeats", { exact: true }).selectOption("date");
+  await dialog.getByLabel("Date", { exact: true }).fill("2026-10-29");
+  await dialog.getByLabel("Start time").fill("13:30"); await dialog.getByLabel("End time").fill("14:00");
+  await dialog.getByLabel("Title", { exact: true }).fill("PRIVATE BUSY-ONLY UI EVENT");
+  await dialog.getByRole("button", { name: "Add block", exact: true }).click(); await expect(dialog).not.toBeVisible();
+  expect((await read(owner)).blocks[0]!.kind).toBe("busy");
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByTestId(`person-${owner.user.id}`)).toHaveAttribute("data-state", "busy");
+  await expect(page.getByText("PRIVATE BUSY-ONLY UI EVENT", { exact: true })).toHaveCount(0);
+  await page.getByLabel("From", { exact: true }).fill("14:00");
+  await expect(page.getByTestId(`person-${owner.user.id}`)).toHaveAttribute("data-state", "available");
+  await page.reload(); await page.getByLabel("From", { exact: true }).fill("14:00");
+  await expect(page.getByTestId(`person-${owner.user.id}`)).toHaveAttribute("data-state", "available");
+  expect((await read(viewer)).shareAvailability).toBe(false);
+  await ownerPage.goto("/settings"); await sharing.click(); await ownerPage.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(ownerPage.getByText("Preferences saved to your account.", { exact: true })).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByTestId(`person-${owner.user.id}`)).toHaveCount(0);
+});
+
 test("an open finder switches its own-profile exclusion when another tab changes the signed-in account", async ({ page, context, browser }) => {
   const { viewer, a, beam, hidden } = await setup(browser, context);
   await write(a, "preferences", { shareAvailability: true });
@@ -96,7 +132,7 @@ test("sharing persists; real multi-account Any/Every and per-date results exclud
   await expect(page.getByTestId(`person-${beam.user.id}`)).toHaveCount(0); await expect(page.getByTestId(`person-${a.user.id}`)).toBeVisible();
   await page.getByRole("button", { name: "By Date", exact: true }).click(); await page.getByLabel("Results for date").selectOption("2026-10-30");
   await expect(page.getByTestId(`person-${beam.user.id}`)).toHaveAttribute("data-state", "busy");
-  await expect(page.getByTestId(`person-${unknown.user.id}`)).toHaveAttribute("data-state", "unknown");
+  await expect(page.getByTestId(`person-${unknown.user.id}`)).toHaveAttribute("data-state", "available");
   await expect(page.getByText("PRIVATE EVENT MUST NOT APPEAR", { exact: true })).toHaveCount(0);
   const wire = await context.request.get("/api/v1/availability?startDate=2026-10-29&endDate=2026-10-31&startTime=13:00&endTime=15:00&timezone=Asia%2FBangkok");
   const payload: AvailabilitySearchResponse = await wire.json(); expect(JSON.stringify(payload)).not.toContain(hidden.user.id); expect(JSON.stringify(payload)).not.toContain(a.user.email);

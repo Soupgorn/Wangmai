@@ -71,7 +71,7 @@ function AvailabilityView({ snapshot, persistent }: { snapshot: CoreSnapshot; pe
 
   return <>
     <div className={`${core.heading} ${styles.pageHeading}`}><div><h1>Good company is a time away.</h1><p>Find your people. Make a little room for a plan.</p></div>{!persistent && <span className={styles.previewBadge}><span />Preview people</span>}</div>
-    <p className={styles.previewNotice}>{persistent ? "Only people who choose to share appear here. Event details and email addresses stay private." : "Preview results · Fictional people and schedules, independent of your account. Real-user search is not connected."}</p>
+    <p className={styles.previewNotice}>{persistent ? "Only other people who choose to share appear here. Time is available unless they mark it unavailable. Event details and email addresses stay private." : "Preview results · Fictional people and schedules, independent of your account. Time is available unless marked unavailable."}</p>
     {!error && !noDates && ready && <a href="#finder-results" className={styles.mobileResultsLink}><UsersRound aria-hidden="true" />View {count} {count === 1 ? "match" : "matches"}</a>}
     <div className={styles.finder}>
       <section className={styles.query} aria-label="Availability filters">
@@ -81,7 +81,7 @@ function AvailabilityView({ snapshot, persistent }: { snapshot: CoreSnapshot; pe
         <div className={styles.timeSection}><h3><Clock3 aria-hidden="true" />{rangeMode ? "Same time, each day" : "A little time together"}</h3><div className={styles.timeInputs}>
           <Field label="From"><input type="time" className={core.input} step={60} required value={start} onChange={(event) => setStart(event.target.value)} aria-invalid={!!error} aria-describedby={error ? "query-error" : "time-help"} /></Field>
           <Field label="Until"><input type="time" className={core.input} step={60} required value={end} onChange={(event) => setEnd(event.target.value)} aria-invalid={!!error} aria-describedby={error ? "query-error" : "time-help"} /></Field>
-        </div><p id="time-help">{rangeMode ? "The whole interval, on each selected date." : "Availability must cover the whole interval."} Overnight plans need two separate searches.</p></div>
+        </div><p id="time-help">Any unavailable block overlapping this interval makes it unavailable.{rangeMode && " Each selected date is checked separately."} Overnight plans need two separate searches.</p></div>
         <Field label="Timezone"><select className={core.input} value={timezone} onChange={(event) => setTimezone(event.target.value)} aria-invalid={!!error} aria-describedby={error ? "query-error" : undefined}>{[...new Set([snapshot.profile.timezone, ...TIMEZONES])].map((zone) => <option key={zone} value={zone}>{zone === "UTC" ? "UTC (Coordinated Universal Time)" : zone}</option>)}</select></Field>
         {self && !rangeMode && <div className={styles.selfStatus}><span>Your shared status</span><StatusTag state={self.state} /></div>}
       </section>
@@ -107,7 +107,7 @@ function AvailabilityView({ snapshot, persistent }: { snapshot: CoreSnapshot; pe
         </div>
         {rangeMode && !error && ready && (personView ? <div className={styles.matchControls}>
           <FinderSegment label="Availability match" value={matching} options={[{ value: "any", label: "Available on Any Day" }, { value: "every", label: "Available on Every Day" }]} onChange={setMatching} />
-          <p>{matching === "any" ? "At least one confirmed date. See exactly which days below." : "Confirmed for the whole interval on every selected date."}</p>
+          <p>{matching === "any" ? "No unavailable conflict on at least one selected date." : "No unavailable conflict for the whole interval on every selected date."}</p>
         </div> : <div className={styles.dateExplorer}>
           <div className={styles.dateNavigation}><Button variant="ghost" size="icon" aria-label="Previous results date" disabled={dayIndex <= 0} onClick={() => setActiveDate(range.days[dayIndex - 1]!.date)}><ChevronLeft aria-hidden="true" /></Button>
             <Field label="Results for date"><select className={core.input} value={day?.date ?? date} onChange={(event) => setActiveDate(event.target.value)}>{range.days.map((day) => <option key={day.date} value={day.date}>{formatDate(day.date, { weekday: "short", day: "numeric", month: "long", year: "numeric" })}</option>)}</select></Field>
@@ -131,7 +131,7 @@ function AvailabilityView({ snapshot, persistent }: { snapshot: CoreSnapshot; pe
               {shown.length === 0 && <EmptyResults every={false} filtered={filter !== "available"} />}
             </>}
         </div>
-        {!error && !noDates && ready && <div className={styles.resultFootnote}><Check aria-hidden="true" /><p>{personView ? `${range.days.length} ${range.days.length === 1 ? "date" : "dates"} checked. ` : ""}Only shared, confirmed time counts as available. Unknown never counts.{persistent && " Results refresh when you return and every 30 seconds while visible."}</p></div>}
+        {!error && !noDates && ready && <div className={styles.resultFootnote}><Check aria-hidden="true" /><p>{personView ? `${range.days.length} ${range.days.length === 1 ? "date" : "dates"} checked. ` : ""}Shared time is available unless blocked as unavailable. Your own account is excluded. Unknown never counts.{persistent && " Results refresh when you return and every 30 seconds while visible."}</p></div>}
         <p className={styles.timezoneNote}><Globe2 aria-hidden="true" /><span>{timezone}</span> · All dates and times use this timezone.</p>
       </section>
     </div>
@@ -139,5 +139,5 @@ function AvailabilityView({ snapshot, persistent }: { snapshot: CoreSnapshot; pe
 }
 
 function EmptyResults({ every, filtered = false }: { every: boolean; filtered?: boolean }) {
-  return <div className={styles.empty} data-result-key="empty"><UsersRound aria-hidden="true" /><h3>{every ? "No one is free every day." : filtered ? "No people with this status." : "A little change might make room."}</h3><p>{every ? "Try Any Day to find people with time on some dates, or choose a shorter range." : filtered ? "Try another status or adjust your dates and times." : "No one has shared availability for this whole time. Try another date or a shorter time range."}</p></div>;
+  return <div className={styles.empty} data-result-key="empty"><UsersRound aria-hidden="true" /><h3>{every ? "No one is free every day." : filtered ? "No people with this status." : "A little change might make room."}</h3><p>{every ? "Try Any Day to find people with time on some dates, or choose a shorter range." : filtered ? "Try another status or adjust your dates and times." : "Everyone sharing has unavailable time in this interval, or their status could not be determined. Try another time."}</p></div>;
 }

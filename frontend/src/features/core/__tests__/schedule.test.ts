@@ -7,21 +7,23 @@ import { clock, instant, matchesDate } from "../time";
 import type { Person, ScheduleBlock } from "../types";
 
 const person: Person = { id: "private", displayName: "Private", timezone: "Asia/Bangkok", shareAvailability: true };
-const recurring: ScheduleBlock = { id: "rule", ownerId: person.id, title: "Weekly", kind: "available", start: "09:00", end: "12:00", timing: { type: "weekly", weekday: 1 } };
+const recurring: ScheduleBlock = { id: "rule", ownerId: person.id, title: "Weekly", kind: "busy", start: "09:00", end: "12:00", timing: { type: "weekly", weekday: 1 } };
 test("weekly rules continue across weeks; a dated replacement/cancellation only suppresses its own date", () => {
   const rule = { ...recurring, excludedDates: ["2026-11-02"] };
   assert.equal(matchesDate(rule, "2026-11-02"), false);
   assert.equal(matchesDate(rule, "2026-11-09"), true);
   const replacement: ScheduleBlock = { ...recurring, id: "exception", timing: { type: "date", date: "2026-11-02" }, start: "15:00", end: "16:00" };
-  assert.equal(classifyAvailability(person, [rule, replacement], { date: "2026-11-02", start: "09:00", end: "10:00", timezone: person.timezone }).state, "unknown");
-  assert.equal(classifyAvailability(person, [rule, replacement], { date: "2026-11-02", start: "15:00", end: "16:00", timezone: person.timezone }).state, "available");
+  assert.equal(classifyAvailability(person, [rule, replacement], { date: "2026-11-02", start: "09:00", end: "10:00", timezone: person.timezone }).state, "available");
+  assert.equal(classifyAvailability(person, [rule, replacement], { date: "2026-11-02", start: "15:00", end: "16:00", timezone: person.timezone }).state, "busy");
+  assert.equal(classifyAvailability(person, [rule, replacement], { date: "2026-11-09", start: "09:00", end: "10:00", timezone: person.timezone }).state, "busy");
 });
 test("partial busy overlaps override availability, adjacent boundaries remain half-open", () => {
   const busy: ScheduleBlock = { ...recurring, id: "busy", kind: "busy", start: "10:00", end: "11:00", timing: { type: "date", date: "2026-11-02" } };
   const query = { date: "2026-11-02", start: "09:00", end: "10:00", timezone: person.timezone };
-  assert.equal(classifyAvailability(person, [recurring, busy], query).state, "available");
-  assert.equal(classifyAvailability(person, [recurring, busy], { ...query, end: "10:01" }).state, "busy");
-  assert.equal(classifyAvailability(person, [recurring, busy], { ...query, start: "11:00", end: "12:00" }).state, "available");
+  const legacy = { ...recurring, kind: "available" as const };
+  assert.equal(classifyAvailability(person, [legacy, busy], query).state, "available");
+  assert.equal(classifyAvailability(person, [legacy, busy], { ...query, end: "10:01" }).state, "busy");
+  assert.equal(classifyAvailability(person, [legacy, busy], { ...query, start: "11:00", end: "12:00" }).state, "available");
   assert.equal(layoutBlocks([recurring, busy])[0]!.lanes, 2);
 });
 test("midnight belongs to the following local date; overnight ranges require two blocks", () => {

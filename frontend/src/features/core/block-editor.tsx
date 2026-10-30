@@ -62,13 +62,14 @@ export function BlockEditor({ editor, onClose, fallbackFocus }: { editor: Editor
           const next = event.target.value as "series" | "occurrence"; setScope(next); setConfirmDelete(false);
           setDraft({ ...draft, timing: next === "occurrence" ? { type: "date", date: editor.date } : editor.draft.timing });
         }}><option value="series">Every weekly occurrence</option><option value="occurrence">This occurrence only</option></select></Field>}
-        <fieldset><legend className="text-xs text-muted-foreground">Mark this time as</legend>
-          <div className={styles.radioOptions}>{(["available", "busy"] as const).map((kind) => <label key={kind}><input type="radio" name="kind" value={kind} checked={draft.kind === kind} onChange={() => setDraft((current) => ({
+        <fieldset><legend className="text-xs text-muted-foreground">Mark unavailable time</legend>
+          <div className={styles.radioOptions}>{(saved?.kind === "available" ? ["available", "busy"] as const : ["busy"] as const).map((kind) => <label key={kind}><input type="radio" name="kind" value={kind} checked={draft.kind === kind} onChange={() => setDraft((current) => ({
             ...current,
             kind,
             title: ["", "Busy", ...Object.values(defaultBlockTitles)].includes(current.title.trim()) ? defaultBlockTitles[kind] : current.title,
-          }))} />{blockLabels[kind]}</label>)}</div>
+          }))} />{kind === "available" ? "Previous availability (legacy)" : blockLabels[kind]}</label>)}</div>
         </fieldset>
+        {saved?.kind === "available" && <p className="text-xs text-muted-foreground">This previous availability marker no longer affects finder results. Choose Unavailable to turn it into blocked time, or delete it if it is no longer needed.</p>}
         <Field label="Title"><input autoComplete="off" className={styles.input} value={draft.title} maxLength={80} required onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></Field>
         <Field label="Repeats"><select disabled={scope === "occurrence" || Boolean(saved?.exceptionFor)} className={styles.input} value={draft.timing.type} onChange={(event) => setDraft({ ...draft, timing: event.target.value === "weekly" ? { type: "weekly", weekday: dateValue(editor.date).dayOfWeek } : { type: "date", date: editor.date } })}><option value="date">Does not repeat</option><option value="weekly">Every week</option></select></Field>
         {draft.timing.type === "weekly"

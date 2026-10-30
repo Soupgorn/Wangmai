@@ -86,7 +86,7 @@ if (phase === "initial") {
   await signIn(state.a, "SimulationA"); await signIn(state.b, "SimulationB");
   state.owner = (await request("/api/v1/me", { actor: state.a })).json().user.id;
   assert.equal((await readSchedule()).shareAvailability, false);
-  const weekly = { title: "private-synthetic-weekly-title", kind: "available", start: "13:00", end: "17:00", timing: { type: "weekly", weekday: 4 } };
+  const weekly = { title: "private-synthetic-weekly-title", kind: "busy", start: "13:00", end: "17:00", timing: { type: "weekly", weekday: 4 } };
   assert.equal((await write("/schedule/entries", "POST", { mutationId: randomUUID(), entry: weekly })).status, 201);
   state.recurring = (await readSchedule()).blocks[0].id;
   assert.equal((await write(`/schedule/entries/${state.recurring}`, "PATCH", { end: "16:00" })).status, 200);
@@ -95,7 +95,7 @@ if (phase === "initial") {
   assert.deepEqual(found.counts, { anyDay: 1, everyDay: 0 });
   const dated = { ...weekly, timing: { type: "date", date: "2027-01-01" } };
   assert.equal((await write("/schedule/entries", "POST", { mutationId: randomUUID(), entry: dated })).status, 201);
-  assert.deepEqual((await search()).json().counts, { anyDay: 1, everyDay: 1 });
+  assert.deepEqual((await search()).json().counts, { anyDay: 0, everyDay: 0 });
   assert.equal((await write(`/schedule/entries/${state.recurring}/exceptions/2026-12-31`, "PUT", { replacement: null })).status, 200);
   found = (await search()).json(); assert.deepEqual(found.counts, { anyDay: 1, everyDay: 0 });
   assert.ok(!JSON.stringify(found).includes(weekly.title)); assert.ok(!JSON.stringify(found).includes("@example.invalid"));

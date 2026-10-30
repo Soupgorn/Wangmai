@@ -29,7 +29,7 @@ test("calendar CRUD, recurrence, validation and focus", async ({ page }) => {
   await dialog.getByLabel("End time").fill("19:00");
   await dialog.getByRole("button", { name: "Add block" }).click();
   await expect(dialog).not.toBeVisible();
-  let block = page.getByRole("button", { name: /Edit Weekly reading, available, 18:00 to 19:00, repeats weekly/ });
+  let block = page.getByRole("button", { name: /Edit Weekly reading, unavailable, 18:00 to 19:00, repeats weekly/ });
   await expect(block).toBeVisible();
   await page.getByRole("button", { name: "Next week", exact: true }).click();
   await expect(block).toBeVisible();
@@ -37,7 +37,7 @@ test("calendar CRUD, recurrence, validation and focus", async ({ page }) => {
   await dialog.getByLabel("Title", { exact: true }).fill("Weekly quiet time");
   await dialog.getByLabel("End time").fill("20:00");
   await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
-  block = page.getByRole("button", { name: /Edit Weekly quiet time, available, 18:00 to 20:00/ });
+  block = page.getByRole("button", { name: /Edit Weekly quiet time, unavailable, 18:00 to 20:00/ });
   await block.click();
   await dialog.getByRole("button", { name: "Delete block" }).click();
   await dialog.getByRole("button", { name: "Confirm delete" }).click();
@@ -64,17 +64,15 @@ test("calendar CRUD, recurrence, validation and focus", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Add time", exact: true })).toBeFocused();
 });
 
-test("calendar titles follow availability and short blocks keep text inside their bounds", async ({ page }) => {
+test("new calendar blocks are Busy only and short blocks keep text inside their bounds", async ({ page }) => {
   await preview(page);
   await page.getByLabel("Jump to date").fill("2026-11-02");
   await page.getByRole("button", { name: "Add time", exact: true }).click();
   const dialog = page.getByRole("dialog");
   const title = dialog.getByLabel("Title", { exact: true });
-  await expect(title).toHaveValue("Free time");
-  await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
   await expect(title).toHaveValue("Unavailable");
-  await dialog.getByRole("radio", { name: "Available", exact: true }).check();
-  await expect(title).toHaveValue("Free time");
+  await expect(dialog.getByRole("radio", { name: "Unavailable", exact: true })).toBeChecked();
+  await expect(dialog.getByRole("radio", { name: "Available", exact: true })).toHaveCount(0);
   await title.fill("Work");
   await dialog.getByRole("radio", { name: "Unavailable", exact: true }).check();
   await expect(title).toHaveValue("Work");
@@ -97,7 +95,7 @@ test("calendar titles follow availability and short blocks keep text inside thei
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const example of examples) {
-      const event = page.getByRole("button", { name: `Edit ${example.title}, ${example.unavailable ? "unavailable" : "available"}, ${example.start} to ${example.end}, repeats weekly`, exact: true });
+      const event = page.getByRole("button", { name: `Edit ${example.title}, unavailable, ${example.start} to ${example.end}, repeats weekly`, exact: true });
       await event.scrollIntoViewIfNeeded();
       const textFits = await event.evaluate((element) => {
         const bounds = element.getBoundingClientRect();
@@ -162,8 +160,8 @@ test("instant filtering, counts, busy and unknown states", async ({ page }) => {
   await page.getByRole("button", { name: "Everyone (6)", exact: true }).click();
   await page.getByLabel("From", { exact: true }).fill("08:00");
   await page.getByLabel("Until", { exact: true }).fill("09:00");
-  await page.getByRole("button", { name: "Available (0)", exact: true }).click();
-  await expect(page.getByText(/No one has shared availability for this whole time/)).toBeVisible();
+  await page.getByRole("button", { name: "Available (5)", exact: true }).click();
+  await expect(page.getByTestId("person-jamie")).toHaveAttribute("data-state", "available");
   await expect(page.getByText("Private appointment", { exact: true })).toHaveCount(0);
 });
 
@@ -179,7 +177,7 @@ test("profile, timezone, sharing, logout and honest mock boundary", async ({ pag
   await expect(page.getByText("Updated in this preview only.")).toBeVisible();
   await expect(page.getByRole("img", { name: "Ari Preview" })).toHaveCount(0);
   await page.getByRole("link", { name: "Who’s free?", exact: true }).click();
-  await expect(page.getByTestId("available-count")).toContainText("0 people");
+  await expect(page.getByTestId("available-count")).toContainText("5 people");
   await expect(page.getByText("UTC", { exact: true })).toBeVisible();
   await expect(page.getByText("Your shared status").locator("..")).toContainText("Unknown");
   await page.getByRole("link", { name: "Settings", exact: true }).click();

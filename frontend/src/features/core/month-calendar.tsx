@@ -14,7 +14,7 @@ export function MonthCalendar({ date, onDate, onEdit }: { date: string; onDate: 
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionMode, setMode] = useState<SelectionMode>("single");
   const [anchor, setAnchor] = useState<string | null>(null);
-  const [status, setStatus] = useState("available");
+  const [status, setStatus] = useState("busy");
   const [start, setStart] = useState("13:00"); const [end, setEnd] = useState("17:00");
   const [pending, setPending] = useState(false); const lock = useRef(false);
   const [feedback, setFeedback] = useState(""); const [error, setError] = useState("");
@@ -39,7 +39,7 @@ export function MonthCalendar({ date, onDate, onEdit }: { date: string; onDate: 
     if (lock.current || !selected.length || !snapshot) return;
     lock.current = true; setPending(true); setFeedback(""); setError("");
     try {
-      const result = await applyDatedBlocks(selected, { title: status === "personal" ? "Personal Time" : status === "busy" ? "Unavailable" : "Free time", kind: status === "available" ? "available" : "busy", start, end: end === "00:00" ? "24:00" : end, timing: { type: "date", date } }, snapshot.profile.timezone, saveBlock);
+      const result = await applyDatedBlocks(selected, { title: status === "personal" ? "Personal Time" : "Unavailable", kind: "busy", start, end: end === "00:00" ? "24:00" : end, timing: { type: "date", date } }, snapshot.profile.timezone, saveBlock);
       setSelected(result.remaining); setAnchor(null);
       setFeedback(`${result.confirmed.length} of ${selected.length} dates ${mode === "persistent" ? "saved to your account" : "updated in preview"}.`);
       if (result.error) setError(`${result.error} ${result.remaining.length} dates remain selected. Retry the same times or reload to confirm before changing the block.`);
@@ -69,12 +69,12 @@ export function MonthCalendar({ date, onDate, onEdit }: { date: string; onDate: 
         </button>;
       })}
     </div>
-    <div className={styles.monthLegend}><span>Available</span><span data-kind="busy">Busy</span><span data-kind="personal">Personal Time</span><p>Dots represent time blocks, not all-day status. Multiple colors mean mixed time blocks.</p></div>
+    <div className={styles.monthLegend}><span>Previous availability</span><span data-kind="busy">Busy</span><span data-kind="personal">Personal Time</span><p>Only Busy and Personal Time affect availability. Previous Available markers are preserved but ignored.</p></div>
     <div className={styles.bulkPanel}>
       <p role="status" aria-live="polite">{selected.length ? `${selected.length} ${selected.length === 1 ? "date" : "dates"} selected: ${selected.join(", ")}` : "Select dates to add time."}</p>
       <form onSubmit={(event) => { event.preventDefault(); void apply(); }}>
         <fieldset disabled={pending || !selected.length} className={styles.bulkFields}>
-          <Field label="Status"><select className={styles.input} value={status} onChange={(event) => setStatus(event.target.value)}><option value="available">Available</option><option value="busy">Busy</option><option value="personal">Personal Time</option></select></Field>
+          <Field label="Status"><select className={styles.input} value={status} onChange={(event) => setStatus(event.target.value)}><option value="busy">Busy</option><option value="personal">Personal Time</option></select></Field>
           <Field label="Start time"><input className={styles.input} type="time" required value={start} onChange={(event) => setStart(event.target.value)} /></Field>
           <Field label="End time"><input className={styles.input} type="time" required value={end} onChange={(event) => setEnd(event.target.value)} /></Field>
           <Button type="submit" aria-busy={pending}>{pending ? "Saving dates…" : "Apply to selected dates"}</Button>

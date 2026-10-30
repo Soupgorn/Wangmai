@@ -19,7 +19,7 @@ export async function fetchAvailability(query: AvailabilitySearchQuery, signal: 
 /** Adapt status-only wire data; no schedule, owner timezone, or email reaches the view. */
 export function rangeFromResponse(response: AvailabilitySearchResponse): RangeResults {
   const people = new Map(response.people.map(({ id, displayName, image }) => [id, { id, displayName, image }]));
-  const explanation = { available: "Free for the whole selected time.", busy: "Unavailable during this time.", unknown: "No shared availability for the full time range." };
+  const explanation = { available: "No unavailable block overlaps this time.", busy: "Unavailable during this time.", unknown: "This time could not be determined safely." };
   const days = response.days.map((day) => ({ date: day.date, results: day.results.map((row) => ({ person: people.get(row.personId)!, state: row.state, explanation: explanation[row.state] })) }));
   const every = new Set(response.people.filter((person) => person.availableDates.length === days.length).map((person) => person.id));
   return { days, everyDay: (days[0]?.results ?? []).filter((result) => every.has(result.person.id)) };
