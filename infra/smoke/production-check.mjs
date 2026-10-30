@@ -13,7 +13,10 @@ function request(path, { actor = {}, method = "GET", body, headers = {} } = {}) 
   return new Promise((resolve, reject) => {
     const req = https.request({ hostname: "gateway", port: 443, servername: "wangmai.invalid", ca: readFileSync("/fixtures/root.crt"),
       path, method, headers: { host: "wangmai.invalid", origin, cookie: Object.entries(actor).map(([key, value]) => `${key}=${value}`).join("; "),
-        ...(body ? { "content-type": "application/json" } : {}), ...headers } }, res => {
+        ...(body ? { "content-type": "application/json" } : {}),
+        ...(process.env.PROVIDER_SPOOF_HEADERS === "1" ? { "x-forwarded-for": "203.0.113.66, 198.51.100.8", "x-forwarded-host": "evil.invalid",
+          "x-forwarded-proto": "http", "x-wangmai-client-ip": "203.0.113.66", forwarded: "for=evil;proto=http;host=evil.invalid" } : {}),
+        ...headers } }, res => {
       let text = "";
       res.on("data", chunk => { text += chunk; });
       res.on("end", () => {

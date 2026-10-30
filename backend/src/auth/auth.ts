@@ -47,6 +47,7 @@ export function createAuth(env: Environment, db: Database) {
     },
     advanced: {
       trustedProxyHeaders: false,
+      ...(env.AUTH_CLIENT_IP_HEADER ? { ipAddress: { ipAddressHeaders: [env.AUTH_CLIENT_IP_HEADER] } } : {}),
       disableOriginCheck: false,
       disableCSRFCheck: false,
       useSecureCookies: env.NODE_ENV === "production",

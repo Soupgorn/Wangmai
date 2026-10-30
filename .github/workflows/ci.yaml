@@ -22,26 +22,13 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
-      - run: docker compose --env-file .env.example -f compose.yaml -f compose.direct-https.yaml config --quiet
-        env:
-          WANGMAI_IMAGE_TAG: ci-config-validation
-          WANGMAI_INGRESS_MODE: direct-https
-          POSTGRES_RUNTIME_USER: wangmai_runtime
-          POSTGRES_MIGRATION_USER: wangmai_migrator
       - run: python3 -B -m unittest discover -s infra/deployment -p 'test_*.py' -v
       - run: docker pull postgres:18-alpine
       - run: python3 -u -B infra/deployment/role_smoke.py
       - run: docker compose --env-file .env.example -f compose.dev.yaml config --quiet
-      - run: docker pull caddy:2-alpine
       - name: Build production application images (local test tags only)
         run: |
           docker build --build-arg SOURCE_COMMIT="$GITHUB_SHA" -f backend/Dockerfile -t wangmai-backend:ci-test .
           docker build --build-arg SOURCE_COMMIT="$GITHUB_SHA" -f frontend/Dockerfile -t wangmai-frontend:ci-test .
-      - name: Both ingress modes and forwarded-header defenses
-        run: python3 -u -B infra/deployment/proxy_smoke.py --node-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test
-      - name: Provisioned HTTPS origin certificate and gateway security
-        run: python3 -u -B infra/deployment/origin_tls_smoke.py --node-image wangmai-backend:ci-test
-      - name: Private production Compose simulation with mock Google provider
-        run: python3 -u -B infra/deployment/production_smoke.py --backend-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test
-      - name: HTTPS origin production Compose simulation
-        run: python3 -u -B infra/deployment/production_smoke.py --ingress-mode shared-gateway-https --backend-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test
+      - name: Provider -> Next -> Hono -> PostgreSQL, mock OAuth and ingress defenses
+        run: python3 -u -B infra/deployment/provider_smoke.py --backend-image wangmai-backend:ci-test --frontend-image wangmai-frontend:ci-test

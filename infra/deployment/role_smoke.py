@@ -180,11 +180,11 @@ def main():
             else:
                 raise AssertionError("Nonempty restore target must be rejected")
             if args.backend_image:
-                ops.verify_backup({"services": {"postgres": {"image": args.postgres_image}, "backend": {"image": args.backend_image}}}, archive, retain=False)
+                ops.verify_backup({"services": {"postgres": {"image": args.postgres_image}, "backend": {"image": args.backend_image}}}, archive, retain=True)
         print("PASS: exact data/journal backup-restore fingerprints, migration ownership, runtime grants and nonempty-target protection", flush=True)
     finally:
         for name in reversed(names):
-            subprocess.run(["docker", "rm", "--force", "--volumes", name], capture_output=True)
+            subprocess.run(["docker", "rm", "--force", name], capture_output=True)
         run(["docker", "network", "rm", network])
         secret_directory.cleanup()
 

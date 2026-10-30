@@ -1,0 +1,41 @@
+# Historical Phase 6 ingress only. Never combine with provider-proxy-next.
+# Use with the matching historical override and the PREVIOUS release images.
+x-logging: &bounded-logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+services:
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    restart: unless-stopped
+    logging: *bounded-logs
+    stop_grace_period: 30s
+    environment:
+      WANGMAI_DOMAIN: ${WANGMAI_DOMAIN:?Set the real public DNS hostname}
+      WANGMAI_INGRESS_MODE: ${WANGMAI_INGRESS_MODE:?Explicitly select one reviewed ingress mode and its Compose override}
+    # The base alone cannot start ingress. Select exactly one reviewed mode override.
+    command: [sh, /etc/caddy/start.sh, unselected]
+    volumes:
+      - ./infra/caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks: [edge, app]
+    healthcheck:
+      # Admin API stays on container loopback; this never requests a certificate.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  edge:
+volumes:
+  caddy_data:
+  caddy_config:

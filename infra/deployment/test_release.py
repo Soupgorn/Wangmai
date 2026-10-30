@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,6 +9,16 @@ import release
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_either_existing_release_tag_prevents_build_or_artifact_changes(self):
+        for results in ([0], [1, 0]):
+            with tempfile.TemporaryDirectory() as directory, patch.object(release, "run", side_effect=["a" * 40, ""]) as run, \
+                    patch.object(release, "local_docker"), patch.object(release.subprocess, "run", side_effect=[subprocess.CompletedProcess([], code) for code in results]):
+                output = Path(directory) / "release"
+                with self.assertRaisesRegex(ValueError, "already exists"):
+                    release.build("a" * 40, "node@sha256:" + "b" * 64, output)
+                self.assertFalse(output.exists())
+                self.assertFalse(any(call.args[0][:2] == ["docker", "build"] for call in run.call_args_list))
+
     def test_requires_full_sha_and_immutable_base(self):
         for commit, base in (("latest", "node@sha256:" + "b" * 64), ("a" * 40, "node:24"), ("a" * 40, "evil@sha256:" + "b" * 64)):
             with self.assertRaises(ValueError): release.validate_inputs(commit, base)

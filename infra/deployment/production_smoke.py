@@ -131,7 +131,7 @@ wangmai.invalid {
         override_path.write_text(text)
         ports_path = fixture / "compose.no-ports.yaml"
         ports_path.write_text("services:\n  caddy:\n    ports: !override []\n")
-        base = ["docker", "compose", "--project-name", project, "--env-file", str(env_file), "-f", str(ROOT / "compose.yaml"),
+        base = ["docker", "compose", "--project-name", project, "--env-file", str(env_file), "-f", str(ROOT / "compose.yaml"), "-f", str(ROOT / "compose.caddy-rollback.yaml"),
                 "-f", str(ROOT / f"compose.{args.ingress_mode}.yaml"), "-f", str(ROOT / "compose.database-ops.yaml"), "-f", str(override_path), "-f", str(ports_path), "--profile", "database-ops"]
         def dc(*args2):
             return command(base + list(args2), env=safe_env)
