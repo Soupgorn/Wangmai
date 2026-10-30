@@ -40,6 +40,9 @@ def main():
     containers = []
     with tempfile.TemporaryDirectory(prefix=prefix) as directory:
         fixture = Path(directory)
+        # TemporaryDirectory is 0700 on Linux; application-image clients use UID
+        # 1000 and must traverse this directory to read these public fixtures.
+        fixture.chmod(0o755)
         for source in (ROOT / "infra/caddy").iterdir():
             if source.is_file():
                 shutil.copyfile(source, fixture / source.name)
@@ -48,6 +51,8 @@ def main():
         # Exact direct production config with only the certificate issuer changed locally.
         direct = (fixture / "Caddyfile").read_text(encoding="utf-8")
         (fixture / "Caddyfile.direct-test").write_text(direct.replace("{\n", "{\n\tlocal_certs\n\tskip_install_trust\n", 1), encoding="utf-8")
+        for path in fixture.iterdir():
+            path.chmod(0o644)
         docker("network", "create", "--internal", network)
         def start(suffix, image, *command, aliases=(), env=()):
             name = prefix + "-" + suffix
@@ -106,6 +111,7 @@ def main():
                         assert server["automatic_https"]["disable"] is True
                         assert server["listen"] == [":80"]
             docker("cp", direct_name + ":/data/caddy/pki/authorities/local/root.crt", str(fixture / "root.crt"))
+            (fixture / "root.crt").chmod(0o644)
             for mode in ("gateway", "direct"):
                 print(docker("exec", gateway, "node", "/fixtures/proxy-check.mjs", mode, peer))
             print(docker("run", "--rm", "--pull", "never", "--network", network, "--mount", f"type=bind,source={fixture},target=/fixtures,readonly",

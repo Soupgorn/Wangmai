@@ -210,6 +210,11 @@ The existing browser suite passed all 53 tests in its own disposable database,
 including real persisted multi-account availability, recurrence edits, calendar
 rendering, responsive/reduced-motion behavior and logout. Test-only local env and
 database resources were removed; generated `next-env.d.ts` changes are excluded.
+The first push CI exposed the pre-existing proxy smoke's Linux temporary-directory
+permission mismatch: Node UID 1000 could not traverse a host-owned 0700 fixture
+directory. Public fixture directories/files and the test CA now explicitly permit
+non-root read access (0755/0644); no production secret-file permissions change.
+Follow-up CI results are reported against the final feature commit.
 
 | Status | Evidence / requirement |
 | --- | --- |
