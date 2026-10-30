@@ -5,7 +5,7 @@ const { configuration, guardRequest, attachGuard, preserveAPIURI } = require('./
 
 const env = {
   NODE_ENV: 'production', PORT: '3000', WANGMAI_INGRESS_MODE: 'provider-proxy-next', WANGMAI_PROVIDER_PROXY_NEXT_CONFIG: 'selected',
-  WANGMAI_DOMAIN: 'calendar.company.org', WANGMAI_ORIGIN_BIND_IP: '10.60.2.22', WANGMAI_GATEWAY_CIDRS: '192.0.2.10/32',
+  WANGMAI_DOMAIN: 'wangmai.snowballwy.com', WANGMAI_ORIGIN_BIND_IP: '10.60.2.22', WANGMAI_GATEWAY_CIDRS: '192.0.2.10/32',
   WANGMAI_GATEWAY_HEADERS_VERIFIED: 'verified', WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED: 'verified',
   WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED: 'verified', WANGMAI_ORIGIN_INTEGRITY_VERIFIED: 'verified',
   WANGMAI_ORIGIN_LINK_PROTECTION: 'ipsec', WANGMAI_GATEWAY_CONTRACT_REFERENCE: 'review/GW-123',
@@ -32,6 +32,10 @@ test('untrusted socket peers cannot forge trusted headers', () => {
   for (const peer of ['192.0.2.11', '127.0.0.1', '::1', '::ffff:203.0.113.66']) assert.equal(check({}, peer).res.status, 403);
 });
 test('reject ambiguous, missing and spoofed forwarded headers and Host', () => {
+  for (const domain of ['wangmai.public.cloud.ce-nacl.com', 'wangmai.ce-nacl.com']) {
+    assert.equal(check({ host: domain }).res.status, 421);
+    assert.equal(check({ 'x-forwarded-host': domain }).res.status, 400);
+  }
   for (const [key, value, status] of [['host', 'evil.invalid', 421], ['host', env.WANGMAI_DOMAIN + ':3000', 421],
     ['x-forwarded-host', 'evil.invalid', 400], ['x-forwarded-proto', 'http', 400], ['x-forwarded-proto', 'https, http', 400],
     ['x-forwarded-for', '203.0.113.66, 198.51.100.8', 400], ['x-forwarded-for', 'unknown', 400], ['x-forwarded-for', 'fe80::1%eth0', 400],
