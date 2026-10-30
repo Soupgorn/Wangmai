@@ -44,6 +44,40 @@ async function dates(page: Page) {
   await page.locator('[data-picker-date="2026-10-29"]').click(); await page.locator('[data-picker-date="2026-10-31"]').click();
 }
 
+test("an open finder switches its own-profile exclusion when another tab changes the signed-in account", async ({ page, context, browser }) => {
+  const { viewer, a, beam, hidden } = await setup(browser, context);
+  await write(a, "preferences", { shareAvailability: true });
+  const useSession = async (who: Actor) => {
+    const separator = who.cookie.indexOf("=");
+    await context.addCookies([{ name: who.cookie.slice(0, separator), value: who.cookie.slice(separator + 1), url: env.BETTER_AUTH_URL, httpOnly: true, sameSite: "Lax" }]);
+  };
+  await useSession(a);
+  await page.goto("/availability");
+  await expect(page.getByTestId(`person-${beam.user.id}`)).toBeVisible();
+  await expect(page.getByTestId(`person-${a.user.id}`)).toHaveCount(0);
+  // A different tab finishes sign-in as B; this existing tab receives the new
+  // server-verified session on focus without a full document navigation.
+  await useSession(viewer);
+  await page.clock.runFor(6_000);
+  const refreshed = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/auth/get-session");
+  const searched = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/availability");
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  expect((await (await refreshed).json()).user.id).toBe(viewer.user.id);
+  const response: AvailabilitySearchResponse = await (await searched).json();
+  expect(response.people.some((person) => person.id === a.user.id)).toBe(true);
+  await expect(page.getByTestId(`person-${a.user.id}`)).toHaveAttribute("data-state", "available");
+  await expect(page.getByTestId(`person-${viewer.user.id}`)).toHaveCount(0);
+  await expect(page.getByTestId(`person-${hidden.user.id}`)).toHaveCount(0);
+  expect((await read(viewer)).shareAvailability).toBe(false);
+  await useSession(a);
+  await page.clock.runFor(6_000);
+  const switchedBack = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/auth/get-session");
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  expect((await (await switchedBack).json()).user.id).toBe(a.user.id);
+  await expect(page.getByTestId(`person-${a.user.id}`)).toHaveCount(0);
+  await expect(page.getByTestId(`person-${beam.user.id}`)).toBeVisible();
+});
+
 test("sharing persists; real multi-account Any/Every and per-date results exclude private users; preview stays isolated", async ({ page, context, browser }) => {
   const { a, beam, unknown, hidden } = await setup(browser, context);
   expect((await read(a)).shareAvailability).toBe(false);
