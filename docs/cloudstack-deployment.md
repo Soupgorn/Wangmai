@@ -9,20 +9,24 @@ is verified. Repository tests are synthetic evidence, never verification of NaCl
 This runbook is a manual handoff; no VM access, deployment or provider change is automated.
 Use npm Workspaces, Google OAuth, Better Auth and Drizzle as before. There is no Vercel migration.
 
+The production domain target is `https://wangmai.snowballwy.com`. Follow the
+[domain cutover checklist](production-domain-cutover.md) before changing a running
+environment; the earlier `wangmai.ce-nacl.com` migration target is superseded.
+
 ## Exact NaCl reverse proxy settings
 
 | Setting | Required value |
 | --- | --- |
-| Public hostname / HTTP Host | `wangmai.public.cloud.ce-nacl.com` |
+| Public hostname / HTTP Host | `wangmai.snowballwy.com` |
 | Public listener | HTTPS TCP 443, valid publicly trusted certificate; TLS 1.2+ |
 | Public HTTP listener | Redirect HTTP 80 to the same HTTPS hostname, preserving URI |
 | Upstream protocol | HTTP |
 | Upstream address | `10.60.2.22` |
 | Upstream port | `3000` |
-| Upstream Host | `wangmai.public.cloud.ce-nacl.com` (no `:3000`) |
+| Upstream Host | `wangmai.snowballwy.com` (no `:3000`) |
 | Routing | All paths to Next; no separate `/api` gateway route or prefix stripping |
 | URI / query / method / body | Preserve the original request, including OAuth query parameters; no caching or body transformation |
-| `X-Forwarded-Host` | Replace with exactly `wangmai.public.cloud.ce-nacl.com` |
+| `X-Forwarded-Host` | Replace with exactly `wangmai.snowballwy.com` |
 | `X-Forwarded-Proto` | Replace with exactly `https` |
 | `X-Forwarded-For` | Replace with one verified real browser IP (IPv4 or IPv6), never append or pass a supplied chain |
 | Other forwarded/client IP headers | Remove incoming `Forwarded`, all other `X-Forwarded-*`, `X-Real-IP`, `CF-Connecting-IP`, `True-Client-IP`, `Fastly-Client-IP`, `Client-IP`, `X-Wangmai-*`, and `X-Middleware-*` |
@@ -60,8 +64,8 @@ password files and database/volume identities. The intended public origin remain
 
 ```dotenv
 WANGMAI_INGRESS_MODE=provider-proxy-next
-WANGMAI_DOMAIN=wangmai.public.cloud.ce-nacl.com
-BETTER_AUTH_URL=https://wangmai.public.cloud.ce-nacl.com
+WANGMAI_DOMAIN=wangmai.snowballwy.com
+BETTER_AUTH_URL=https://wangmai.snowballwy.com
 WANGMAI_ORIGIN_BIND_IP=10.60.2.22
 ```
 

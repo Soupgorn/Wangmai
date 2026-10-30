@@ -11,6 +11,9 @@ For manual production preparation, use the [CloudStack deployment runbook](docs/
 and the separate [.env.production.example](.env.production.example). Production Compose
 uses `provider-proxy-next`: only Next publishes `10.60.2.22:3000`; Hono and PostgreSQL remain internal. It requires reviewed release images, gateway source/header evidence, and encryption/integrity protection for the HTTP hop. Do not use the local `.env` or
 development volume for deployment. Phase 6A prepares and verifies locally; it does not deploy.
+The production domain target is `https://wangmai.snowballwy.com`; use the
+[domain cutover checklist](docs/production-domain-cutover.md) to prepare DNS,
+NaCl HTTPS/routing and Google OAuth before changing a running environment.
 
 ## Repository history
 

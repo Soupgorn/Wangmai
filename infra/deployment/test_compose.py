@@ -90,7 +90,7 @@ class ComposeTests(unittest.TestCase):
 
         self.values.update(provider_config()['services']['frontend']['environment'])
         self.values['WANGMAI_IMAGE_TAG'] = 'a' * 40
-        self.values['WANGMAI_DOMAIN'] = 'calendar.company.org'
+        self.values['BETTER_AUTH_URL'] = 'https://wangmai.snowballwy.com'
         result = self.render('compose.provider-proxy-next.yaml')
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         config = json.loads(result.stdout)

@@ -11,7 +11,10 @@ No approved SHA release image tag was overwritten; only local phase7-test* image
 The active production selection is `compose.yaml` plus `compose.provider-proxy-next.yaml`.
 It contains exactly frontend, backend and PostgreSQL 18. Only frontend publishes
 `${WANGMAI_ORIGIN_BIND_IP}:3000:3000/tcp`, with the intended bind `10.60.2.22`.
-The fixed public auth origin is `https://wangmai.public.cloud.ce-nacl.com`.
+The production auth origin target is now `https://wangmai.snowballwy.com`.
+The original local evidence below predates that domain change; it does not verify
+the new live DNS, gateway, Google OAuth or cookies. See the
+[domain cutover checklist](production-domain-cutover.md).
 Next's production rewrites are baked to backend:4000 at build time. A socket guard
 rejects untrusted peers/headers before the standalone handler, and a narrow final HTTP
 adapter preserves the exact API URI bytes through Next's native rewrite. Native

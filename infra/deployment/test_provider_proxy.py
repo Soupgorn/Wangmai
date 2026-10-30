@@ -10,12 +10,13 @@ def provider_config():
     frontend['ports'] = [{'host_ip': '10.60.2.22', 'published': '3000', 'target': 3000}]
     frontend['environment'].update({
         'NODE_ENV': 'production', 'PORT': '3000', 'WANGMAI_INGRESS_MODE': 'provider-proxy-next',
-        'WANGMAI_PROVIDER_PROXY_NEXT_CONFIG': 'selected', 'WANGMAI_DOMAIN': 'calendar.company.org',
+        'WANGMAI_PROVIDER_PROXY_NEXT_CONFIG': 'selected', 'WANGMAI_DOMAIN': 'wangmai.snowballwy.com',
         'WANGMAI_ORIGIN_BIND_IP': '10.60.2.22', 'WANGMAI_GATEWAY_CIDRS': '192.0.2.10/32',
         'WANGMAI_GATEWAY_HEADERS_VERIFIED': 'verified', 'WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED': 'verified',
         'WANGMAI_ORIGIN_CONFIDENTIALITY_VERIFIED': 'verified', 'WANGMAI_ORIGIN_INTEGRITY_VERIFIED': 'verified',
         'WANGMAI_ORIGIN_LINK_PROTECTION': 'ipsec', 'WANGMAI_GATEWAY_CONTRACT_REFERENCE': 'review/GW-123',
     })
+    config['services']['backend']['environment']['BETTER_AUTH_URL'] = 'https://wangmai.snowballwy.com'
     config['services']['backend']['environment']['AUTH_CLIENT_IP_HEADER'] = 'x-wangmai-client-ip'
     return config
 
@@ -23,6 +24,12 @@ def provider_config():
 class ProviderGuards(unittest.TestCase):
     def test_verified_configuration(self):
         self.assertEqual(ops.validate(provider_config()), [])
+
+    def test_previous_auth_origins_cannot_mismatch_the_new_gateway_host(self):
+        for domain in ('wangmai.public.cloud.ce-nacl.com', 'wangmai.ce-nacl.com'):
+            config = provider_config()
+            config['services']['backend']['environment']['BETTER_AUTH_URL'] = f'https://{domain}'
+            self.assertTrue(any('BETTER_AUTH_URL' in error for error in ops.validate(config)))
 
     def test_unverified_security_is_never_automatically_accepted(self):
         for key in ('WANGMAI_GATEWAY_HEADERS_VERIFIED', 'WANGMAI_ORIGIN_SOURCE_RESTRICTION_VERIFIED',
